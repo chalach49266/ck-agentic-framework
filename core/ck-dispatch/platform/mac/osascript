@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Mac transport for ck-run's AppleScript protocol. Native iTerm, or live Mac Herdr helpers."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import sys
+import time
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import herdr
+
+STATE = Path.home() / '.local/state/ck-osascript/mac'
+PREFIX = 'ckmac-'
+
+
+def parse(argv):
+    lines, i = [], 0
+    while i + 1 < len(argv) and argv[i] == '-e':
+        lines.append(argv[i + 1])
+        i += 2
+    kind = next((s.split(':', 1)[1].strip() for s in lines if s.startswith('-- ck-run:')), '')
+    text = '\n'.join(lines)
+    if not kind:
+        kind = ('window' if 'create window' in text or 'do script' in text else
+                'notify' if 'display notification' in text else 'tail' if 'contents of' in text else '')
+    return kind, argv[i:]
+
+
+def native(argv):
+    # Preserve arguments, including quoted paths and notification text, without shell evaluation.
+    return subprocess.run([os.environ.get('CK_MAC_OSASCRIPT', '/usr/bin/osascript'), *argv]).returncode
+
+
+class Windows:
+    def __enter__(self):
+        STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.lock = (STATE / 'lock').open('a')
+        fcntl.flock(self.lock, fcntl.LOCK_EX)
+        try:
+            self.data = json.loads((STATE / 'windows.json').read_text())
+        except (OSError, ValueError):
+            self.data = {}
+        return self.data
+
+    def __exit__(self, *exc):
+        if not exc[0]:
+            tmp = STATE / 'windows.tmp'
+            tmp.write_text(json.dumps(self.data) + '\n')
+            tmp.replace(STATE / 'windows.json')
+        self.lock.close()
+
+
+def window(wid):
+    try:
+        return json.loads((STATE / 'windows.json').read_text()).get(wid)
+    except (OSError, ValueError):
+        return None
+
+
+def command_path(command):
+    parts = shlex.split(command)
+    if len(parts) != 2 or parts[0] != '/bin/bash':
+        raise ValueError('Mac launcher requires /bin/bash <run>/live.sh')
+    script = Path(parts[1])
+    if not script.is_absolute() or script.name != 'live.sh' or not script.is_file():
+        raise ValueError('Mac launcher requires an existing absolute live.sh path')
+    return script
+
+
+def start(args, wid=None):
+    command, title = args[:2]
+    script = command_path(command)
+    run_dir, runs_dir = script.parent, script.parent.parent
+    prior = window(wid) if wid else None
+    host = prior['host'] if prior else herdr.detect_host('iTerm2')
+    if not host.startswith('herdr:'):
+        return None
+    parts = title.split('·')
+    agent = parts[1].strip() if len(parts) > 1 else ''
+    out = herdr.open_window(run_dir.name, run_dir, script, host.partition(':')[2], runs_dir, run_dir,
+                            agent=agent, title=title)
+    if not out['ok']:
+        sys.stderr.write('Mac Herdr failed; using native iTerm: ' + str(out['error']) + '\n')
+        return None
+    address = out['herdr_terminal']
+    # A separate numeric namespace keeps shared iTerm grouping compatible. Session IDs are tagged too.
+    with Windows() as windows:
+        wid = wid if prior else str(max([10**15, *map(int, windows)]) + 1)
+        row = windows.setdefault(wid, {'host': host, 'terminals': []})
+        row['terminals'].append(address)
+    metadata = herdr.saved(run_dir)
+    metadata.update(adapter_window=wid, adapter_session=PREFIX + address)
+    herdr.save(run_dir, metadata)
+    spawn_watch(run_dir, address)
+    print(f'{wid}|Herdr Mac|{PREFIX}{address}')
+    return 0
+
+
+def spawn_watch(run_dir, address):
+    try:
+        subprocess.Popen([sys.executable, '-I', str(HERE / 'osascript'), '--watch', str(run_dir), address],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, close_fds=True)
+    except OSError as exc:
+        # The terminal is running. Never launch a duplicate if the optional label watcher cannot start.
+        with (run_dir / 'herdr.log').open('a') as log:
+            log.write(f'Label watcher could not start; terminal retained: {exc}\n')
+
+
+def finish_status(result):
+    status = result.get('status', 'failed')
+    return herdr.circle_status(status, result.get('problems') or [])
+
+
+def watch(run_dir, terminal):
+    """Read the runner's final result, then use the live Mac busy/turn close protection."""
+    while run_dir.is_dir():
+        try:
+            result = json.loads((run_dir / 'result.json').read_text())
+            break
+        except (OSError, ValueError):
+            if herdr._get(terminal) is None:
+                return 0
+            time.sleep(1)
+    else:
+        return 0
+    status = finish_status(result)
+    herdr.label(run_dir, status)
+    try:
+        config = json.loads((HERE.parents[1] / 'config/workspaces.json').read_text())
+        delay = float(config.get('live', {}).get('close_tab_after_s', 300))
+    except (OSError, ValueError, TypeError):
+        delay = 300
+    # Only clean runner results auto-close. Partial bookkeeping may be green, but remains reviewable.
+    if result.get('status') == 'ok' and delay > 0:
+        return herdr._closer_main([terminal, str(delay), str(run_dir)])
+    return 0
+
+
+def main(argv):
+    if argv and argv[0] == '--watch':
+        return watch(Path(argv[1]), argv[2])
+    kind, args = parse(argv)
+    # Route existing sessions from their saved identity, regardless of the caller's current host.
+    target = args[0] if args else ''
+    if kind in ('tail', 'write', 'close') and target.startswith(PREFIX):
+        terminal = target[len(PREFIX):]
+        if kind == 'tail':
+            text = herdr.read(terminal)
+            print('CKNOTFOUND' if text is None else 'CKOK\n' + text)
+        elif kind == 'write':
+            ok, _ = herdr.send(terminal, args[2])
+            print('CKOK' if ok else 'CKNOTFOUND')
+        else:
+            # The live Mac watcher owns safe close; shared iTerm's screen-based closer must not kill it.
+            print('CKNOTFOUND')
+        return 0
+    if kind in ('exists', 'tab'):
+        wid = args[3] if kind == 'tab' else target
+        row = window(wid)
+        if row:
+            if kind == 'exists':
+                print('yes' if any(herdr._get(t) for t in row['terminals']) else 'no')
+                return 0
+            result = start(args, wid)
+            return native(argv) if result is None else result
+    if kind == 'tail' and len(args) == 1:
+        row = window(target)
+        if row:
+            print(herdr.read(row['terminals'][-1], lines=6) or '')
+            return 0
+    if kind == 'window':
+        result = start(args)
+        if result is not None:
+            return result
+    return native(argv)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except (OSError, ValueError, KeyError, IndexError, subprocess.TimeoutExpired) as exc:
+        sys.stderr.write(f'Mac host error: {exc}\n')
+        sys.exit(1)

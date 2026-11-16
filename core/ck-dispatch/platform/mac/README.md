@@ -1,64 +1,69 @@
-# platform/mac: ck-run's live host on macOS
+# Mac live host
 
-> **DRAFT, UNVERIFIED: the Mac finishes this (`docs/MAC_HANDOFF.md`).**
-> Written on the Windows PC from the old Mac line (`archive/ck-dispatch-2026-11-15/`). No file here was run on a
-> Mac. This folder holds only this README until the Mac adds its launcher(s).
-
-## What this folder is for
-
-ck-run opens each live run in a terminal window. It talks to "iTerm2" through the program named in
-`config/workspaces.json` → `live.osascript`, and keeps the machine awake with `live.caffeinate`.
-
-| Host folder | Machine | Status |
-|---|---|---|
-| `platform/auto/` | Windows (WSL): router, Herdr OR tmux | built + used on the PC |
-| `platform/herdr/` | Windows: Herdr app panes | built + used on the PC |
-| `platform/wsl/` | Windows: tmux + Windows Terminal, toast, keep-awake stand-in | built, fallback on the PC |
-| `platform/mac/` | macOS: iTerm2 and/or Herdr for Mac | **this draft** |
+The installer routes the Mac's `live.osascript` to `platform/mac/osascript`. It uses the shared runner's existing
+AppleScript calls. Native iTerm receives the original arguments through `/usr/bin/osascript`. Herdr uses the live
+Mac transport copied into `herdr.py`, with portable paths. Native caffeinate remains `/usr/bin/caffeinate`.
 
 ```mermaid
 flowchart TD
-  CR["ck-run live call<br/>(window, tab, exists, tail, write, close, notify)"] --> CFG{"live.osascript<br/>on macOS"}
-  CFG -->|"option A"| OSA["/usr/bin/osascript<br/>real iTerm2 (old Mac default)"]
-  CFG -->|"option B"| MH["platform/mac/osascript (to write)<br/>Herdr for Mac panes, same calls"]
-  CFG -->|"option C"| RT["platform/mac router (to write)<br/>Herdr if the caller is in Herdr, else iTerm2"]
+  RUN[Shared ck-run] --> MAC[Mac protocol adapter]
+  MAC --> ID{Existing session identity?}
+  ID -->|ckmac session or saved Mac window| H[Herdr transport]
+  ID -->|native session| I[Native osascript and iTerm]
+  MAC --> NEW{New run host}
+  NEW -->|CK_RUN_HOST or HC_TERMINAL_ID selects Herdr| H
+  NEW -->|otherwise| I
+  H -->|launch failed before usable address| I
 ```
 
-## Options for the Mac (the Mac picks one and tests it)
+## Selection
 
-**A. iTerm2 only (smallest change).** Mac config: `live.osascript` = `/usr/bin/osascript`, `live.caffeinate` =
-`/usr/bin/caffeinate`, `live.terminal` = `iTerm2`. No code here. This is how the old Mac line worked by default.
+| Caller | New run |
+|---|---|
+| `CK_RUN_HOST=iterm`, `iterm2` or `terminal` | Native AppleScript path |
+| `CK_RUN_HOST=herdr:<terminal address>` | Herdr beside that main terminal |
+| `CK_RUN_HOST=herdr` | Herdr beside `HC_TERMINAL_ID`, if present |
+| No override, `HC_TERMINAL_ID` set | Herdr beside that terminal |
+| No override and no Herdr identity | Native iTerm |
 
-**B. Herdr for Mac through a stand-in.** Like `platform/herdr/osascript` on the PC: a script that answers ck-run's
-iTerm2 calls with `hc` commands (`hc run`, `hc read`, `hc send`, `hc kill`). `ckdispatch/` stays unchanged. The PC
-script uses `wsl.exe` and Windows paths, so it cannot be copied as is.
+Invalid overrides stop with an error. The shared `live.terminal` setting stays `iTerm2` so its grouping, tail,
+resume, notification and fallback protocol works. For Herdr this is a protocol label, not proof of an iTerm window.
+The returned `how` field says `Herdr Mac`. Pane identities start with `ckmac-`; numeric grouping IDs are saved in
+`~/.local/state/ck-osascript/mac/windows.json`. Follow-up reads, writes and close calls route by saved identity,
+even from another host. No Linux `/proc`, WSL command or Windows binary is used.
 
-**C. A router**, like `platform/auto/osascript`, but without `/proc` (macOS has none; read the caller's env another
-way, e.g. a value the shortcut exports, or `ps -E`; UNVERIFIED). Herdr caller → B; else → A.
+## Live Mac behavior kept
 
-**Old way (not in core):** the old Mac line had Herdr inside ck-run (`ckdispatch/herdr.py`, `CK_RUN_HOST`). Bringing
-it back is a code change in `core/`; if the Mac does it, keep it OS-detected and list it in
-`docs/CHANGES_FROM_MAC.md`.
+- Resolve the main pane with `herdr-app ls`. Start beside it in the same tab. Keep main and unrelated panes on the
+  left, stack its agents equally on the right. Layout updates check the document version and retry a conflict.
+- If the main pane is absent, create or reuse the `CK` space and put the run in a new tab.
+- Serialize launch and layout work under the runs folder lock. Keep the live Mac's launch spacing. Its default is
+  defined by `LAUNCH_GAP_S` in `herdr.py`; override with `CK_HERDR_LAUNCH_GAP_S` only when diagnosing startup.
+- Label the selected pane working at launch. A watcher reads the runner's final `result.json` and labels done,
+  needs or failed. It leaves the original status in the result and ledger.
+- Save the actual terminal address in each run's `live-host.json`. Write transport diagnostics to `herdr.log`.
+- Once a clean result is final, use the live Mac delayed closer. It checks the later turn count and busy state.
+  Partial or failed results stay open. The shared iTerm screen-based close request cannot kill a Herdr pane.
+  `live.close_tab_after_s` controls the delay; nonpositive values disable automatic close.
+- Only a terminal with `ck-run=true` can be removed by the live close helper. Do not stop the core server.
 
-## Facts from the old Mac line
+`hc` and `herdr-app` must be installed independently. Overrides: `CK_HERDR_HC`, `CK_HERDR_APP`. Setup creates the
+native Cursor icon shell link rather than copying the source Mac binary. The agent receives its new pane's own
+`HC_TERMINAL_ID`, so a nested launch is attached to the right caller.
 
-| Thing | Old Mac line | Source |
-|---|---|---|
-| Default host | iTerm2, one window per ask, one tab per run; the session runs `<run>/live.sh` | `archive/ck-dispatch-2026-11-15/README.md` "Live mode" |
-| osascript | `/usr/bin/osascript` | `archive/ck-dispatch-2026-11-15/config/workspaces.json` `live.osascript` |
-| Keep awake | `/usr/bin/caffeinate -i -w <ck-run pid>` | `archive/.../ckdispatch/live.py` `CAFFEINATE`, `keep_awake()` |
-| Host override | `CK_RUN_HOST=iterm` or `CK_RUN_HOST=herdr:<main terminal id>`; recorded as `export CK_RUN_HOST=...` in each launch `.sh` | `archive/.../ckdispatch/herdr.py` `detect_host()`, `archive/.../ckdispatch/launch.py` |
-| Herdr tools | `hc`, `herdr-app` on the PATH or in `~/.local/bin`; overrides `CK_HERDR_HC`, `CK_HERDR_APP` | `archive/.../ckdispatch/herdr.py` `hc_path()`, `app_path()` |
-| Herdr layout | main left half, agents stacked right, equal weights | `archive/.../README.md` "Live terminal host" |
-| Pane states | `ck.state` = `done` / `needs` / `failed` (green / yellow / red) | same |
-| Saved address | `live-host.json` in the run folder | same |
-| Herdr test double | `tests/fake_herdr.py`, `tests/test_herdr.py` | `archive/.../tests/` |
-| iTerm2 profiles | `~/Library/Application Support/iTerm2/DynamicProfiles/ck-run-live.json` | `archive/.../README.md` "Live mode" |
+A failure after a terminal starts leaves that terminal in place. A layout failure cannot start a duplicate agent.
+The shared `live.claim` also protects a late terminal when the runner falls back to headless execution.
 
-## Rules for what goes here
+## Protocol and checks
 
-- Only Mac files. Windows behaviour must not change.
-- Same calls and answers as the other hosts (window, tab, exists, tail, write, close, notify), so `ckdispatch/`
-  does not need to know the host.
-- A fake for the tests (like `tests/fake_osascript.py`), so the offline suite stays offline.
-- `python3 -I tests/run_all.py` must still pass.
+`window`, `tab`, `exists`, `tail`, `write`, `close`, and `notify` have the same argument and reply shapes as the
+shared iTerm scripts in `ckdispatch/live.py`. Notifications still use native macOS AppleScript.
+
+```bash
+python3 -I -m unittest discover -s core/ck-dispatch/platform/mac/tests
+python3 -I core/ck-dispatch/tests/run_all.py
+```
+
+The Mac fixture starts no real app, core or agent. It checks routing, persistent identity, quoted paths, layout,
+conflicts, failure fallback, labels and busy/follow-up close protection. Native UI permissions, visual placement,
+real close timing, a live agent race and phone use remain **UNVERIFIED**. See [setup](../../../../setup/mac/README.md).

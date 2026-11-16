@@ -65,7 +65,7 @@ Use the privacy grep from the handoff prompt the owner gives you. Its real patte
 **not** copied here. The shape, with placeholders:
 
 ```bash
-grep -rIEn '({{LAST_NAME}}|{{SHORT_NAME}}\b|100\.[0-9]+\.[0-9]+\.[0-9]+|{{INSTITUTION}}|BEGIN .*PRIVATE|sk-[A-Za-z0-9]{20}|gho_|ghp_)' --exclude-dir=.git .
+grep -rIEn '({{LAST_NAME}}|{{SHORT_NAME}}\b|100\.[0-9]+\.[0-9]+\.[0-9]+|{{INSTITUTION}}|BEGIN .*PRIVATE|sk-[A-Za-z0-9]{20}|[g]ho_|[g]hp_)' --exclude-dir=.git .
 ```
 
 It must find nothing outside placeholder lists. Known allowed hit: `100.64.0.0/10` in `docs/PHONE.md` (the public

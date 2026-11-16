@@ -225,19 +225,46 @@ names, IPs or device names in it beyond this machine.
 
 ---
 
-## M. Mac steps (UNVERIFIED until the Mac part is merged)
+## M. Mac steps
 
-The Mac part is written and tested by the Mac's Claude (contract: [`docs/MAC_HANDOFF.md`](docs/MAC_HANDOFF.md)).
-Until then, this section is a plan, not a tested path.
+Use [`setup/mac/README.md`](setup/mac/README.md) for the detailed paths and backup rules. The Mac build has offline
+proof. Fresh-machine setup, online plugin installs, live windows and phone access remain **UNVERIFIED**.
 
-1. Check: `ls setup/mac/setup.sh`.
-   - Missing: the Mac part is not merged yet. Stop. Tell the owner: "The Mac part is not in the repo yet. Use the Mac
-     handoff prompt (docs/MAC_HANDOFF.md) first." Do not copy the Windows steps onto the Mac.
-   - Present: read [`setup/mac/README.md`](setup/mac/README.md) and follow it. It wins over this section.
-2. Prerequisites (the owner installs and signs in): Git, Python 3, `gh` (`gh auth login`), Claude Code (`/login`),
-   Codex (`codex login`), Cursor agent (`agent login`), agy (optional), Herdr for Mac and/or iTerm2, Tailscale (phone only).
-3. The 3 values: Mac user (`{{MAC_USER}}`), PhD folder (`{{PHD_ROOT}}`, a Mac path), projects (same check as step 3 above).
-4. Dry run, show it, wait for OK, then install: the exact flags are in `setup/mac/README.md` (the handoff asks for
-   `--dry-run`, `--yes`, MAC_USER and PHD_ROOT).
-5. `bash setup/common/smoke.sh`, then the live smoke (step 8, in Herdr for Mac or iTerm2).
-6. Report as in step 9.
+1. Read the Mac setup guide and `core/ck-dispatch/platform/mac/README.md`. Do not run Windows setup on a Mac.
+2. Check prerequisites with `command -v python3 claude codex agent hc herdr-app`. Missing optional agents may be
+   skipped. iTerm is the default and fallback. The owner installs apps and handles login; do not read login files.
+   **Install Herdr itself** before framework setup if it will be the host. The [vendor](https://herdr.dev/download/)
+   offers a terminal script (`curl -fsSL https://releases.herdr.dev/app/install.sh | sh`) or a Mac `.dmg` to drag
+   into Applications. The owner runs the chosen installer and opens Herdr once. See the Mac guide for checks.
+   Source Mac method: **guess from evidence** — `~/Applications/Herdr.app`, core in `~/.local/share/herdr-core`,
+   `hc` linked in `~/.local/bin`, and no app quarantine flag suggest the script rather than the disk image.
+   This is an inference, not a verified installation history; both vendor options are documented.
+3. Confirm `{{MAC_USER}}`, the full `{{PHD_ROOT}}` parent path, and which project folders have been restored.
+   Coursework uses a separate root: confirm `--coursework-root` if the default in the guide is wrong. Check its
+   writable course pairs in the installed config before dispatching coursework.
+4. Run the dry run and show its plan:
+
+   ```bash
+   bash setup/mac/setup.sh --dry-run --mac-user '{{MAC_USER}}' --phd-root '{{PHD_ROOT}}'
+   ```
+
+   A noninteractive run needs an explicit PhD path. Do not select a private OneDrive location by guessing.
+5. With setup authorized, use the same values for the install:
+
+   ```bash
+   bash setup/mac/setup.sh --yes --mac-user '{{MAC_USER}}' --phd-root '{{PHD_ROOT}}'
+   ```
+
+   Offline: add `--no-plugins` to both commands. This copies skills but skips Claude marketplace commands.
+   Do not test a script revision against the real home. Use the temporary-home commands in the Mac setup guide.
+6. Check the installed config points to the actual restored projects. Mac `live.osascript` must end in
+   `platform/mac/osascript`; `live.caffeinate` must be `/usr/bin/caffeinate`. Windows config is not changed.
+7. Open a new terminal. Check `command -v ck-run`, `ck-run models`, `ck-run --help`, and `bash setup/common/smoke.sh`.
+   The installer also runs the offline suite unless `--no-tests` was set. It always runs the short CLI smoke.
+8. Select `ck-main` in Herdr after its portable files are installed. `cdev`, `cnv`, `gb` and `grokbot` open Claude
+   with Grok Bot activation; `phd` only changes folder. From Herdr, new ck-run agents stay beside the caller.
+   Outside Herdr, they use iTerm. Forced hosts are described in the Mac host guide.
+9. A live smoke starts real agents. Run `bash setup/common/smoke.sh --live` only within the owner's authorized
+   scope. It is separate from offline checks. Do not claim it passed because an installer or fake test passed.
+10. Report files changed, checks actually run, and remaining UNVERIFIED items. Give the phone method in
+    `docs/PHONE.md`; do not enable Remote Login or add machines as a side effect of installation.

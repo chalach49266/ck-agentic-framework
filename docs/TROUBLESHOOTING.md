@@ -65,10 +65,24 @@ code (`setup/windows/setup_support.py`, `setup/windows/setup.cmd`), the platform
 
 ## Mac
 
-UNVERIFIED until the Mac part is merged. Known from the old Mac line (`archive/ck-dispatch-2026-11-15/`):
+Offline installer and host tests are available. Real windows, permissions, logins and phone use need a check on
+the destination Mac. Read `setup/mac/README.md` before changing an installed file.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| The Mac sleeps during a long run | `caffeinate -i` stops idle sleep only, not lid-close sleep on battery. | Keep the lid open or on power. |
-| Runs open in the wrong host | The old Mac line used `CK_RUN_HOST=iterm` or `CK_RUN_HOST=herdr:<terminal id>` to force a host. | See `setup/mac/README.md` for the current Mac rule. |
-| Runs try tmux + Windows Terminal on the Mac | The installed config points `live.osascript` to `platform/auto/osascript`, a PC router. It reads the caller's env from `/proc`, which macOS does not have, so it falls back to the WSL (tmux) script. | The Mac config must point `live.osascript` to the Mac host (`/usr/bin/osascript` for iTerm2, or the Mac Herdr adapter). |
+| Setup asks for a PhD path in automation | No terminal and no explicit `--phd-root` | Supply the full path. `--yes` does not guess one. Nothing is changed by this refusal. |
+| `ck-run` missing after install | Old shell, or `~/.local/bin` missing from PATH | Open a new terminal. Check the source line at the end of `~/.zshrc`. Do not replace your shell startup file. |
+| Runs try the Windows adapter | Mac installed config still points to `platform/auto/osascript` | Rerun Mac setup with the same paths, or inspect its rendered `live` block. It must use `platform/mac/osascript`. |
+| iTerm reports Apple events denied | macOS Automation permission was not granted | System Settings → Privacy & Security → Automation. Allow the launching terminal to control iTerm. Retry from the terminal that will launch the run. |
+| No live window; runner says headless fallback | Host executable missing, permission denied or terminal failed to start | Read that run's `herdr.log` and ledger fallback entry. Check `command -v hc herdr-app` and native iTerm. Do not call this a successful live smoke. |
+| Wrong new host | Inherited `HC_TERMINAL_ID` or explicit override | Use `CK_RUN_HOST=iterm` for iTerm; `CK_RUN_HOST=herdr:<terminal address>` for a specific Herdr main pane. Existing sessions still route by saved identity. |
+| Herdr main pane not found | The launching terminal is no longer displayed | The Mac transport opens a new tab in the CK space. Check `herdr-app ls`. |
+| Agents have no CK colors or titles | Stock layout selected, or local mods need refresh | Select `ck-main`, then reopen the app if needed. Restore the original from `.bak` if you want your old preferences. Never restart the core server from an agent. |
+| Cursor icon is plain terminal | Icon shell link missing | Check `~/PhD_local/ck-dispatch/bin/herdr-icons/agent` links to `/bin/bash`. Rerun Mac setup if absent. Do not copy a binary from another Mac. |
+| Finished Herdr pane stays open | Non-ok result, later turn, busy agent, or closing disabled | Check the final runner result and `live.close_tab_after_s`. Issue panes are retained for you. A fake test does not establish real close timing. |
+| Claude Grok Bot mode missing | Plugins were skipped or an old session/cache is loaded | Complete plugin setup later, open a new Claude session and check `/grokbot status`. The installer uses the shared plugin list. |
+| Old preferences changed | Setup applied portable Mac settings | The first original is `<file>.bak`. Restore it locally if wanted. Existing plugin store records are kept on repeats. |
+| iTerm status hooks absent | Installed app has no `cc-status` helper | Setup skips those hooks. Check the installed iTerm resources; do not copy a source-machine helper path. |
+| `washu` points to the wrong folder | Coursework is separate from PhD projects | Rerun with `--coursework-root`, then review its course write pairs. Setup does not infer course folder names. |
+| Mac sleeps or phone loses it | caffeinate stops idle sleep, not all lid-close or network sleep | Keep the Mac reachable on power as appropriate. Check Remote Login and Tailscale separately. |
+| Phone gets connection refused | SSH is not listening | Check Remote Login and `lsof -nP -iTCP:ssh -sTCP:LISTEN`. An enabled launchd flag alone is insufficient. |

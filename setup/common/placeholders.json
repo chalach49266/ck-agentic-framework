@@ -1,14 +1,15 @@
 {
   "install_values": {
     "WIN_USER": "Windows account name, from --win-user or environment; prompted on an interactive install",
-    "PHD_ROOT": "Full PhD parent folder as an absolute WSL path; --phd-root is required without a terminal or with --yes; an existing environment path may be offered interactively",
+    "PHD_ROOT": "Full PhD parent folder; an absolute Mac path on macOS, WSL path on Windows. Required without a terminal or with --yes.",
     "WSL_HOME": "Installing user's HOME",
     "LOCAL_ROOT": "Installing user's HOME/PhD_local",
-    "ONEDRIVE_ROOT": "Parent of Documents, derived from PHD_ROOT"
+    "ONEDRIVE_ROOT": "Parent of Documents, derived from PHD_ROOT",
+    "MAC_USER": "Mac account name, from --mac-user, MAC_USER or the installing account; confirmed interactively",
+    "MAC_HOME": "Installing Mac HOME; Mac setup also renders the historical WSL_HOME token to this path",
+    "COURSEWORK_ROOT": "Mac coursework workspace; --coursework-root or ~/Downloads/WashU HW"
   },
   "historical_placeholders": {
-    "MAC_HOME": "Old Mac home folder; reserved for the Mac worker",
-    "MAC_USER": "Old Mac account name; not an install value on Windows",
     "MACHINE_ID": "Removed source-machine identifier; informational only"
   },
   "reserved_privacy_placeholders": {
@@ -17,7 +18,12 @@
     "EMAIL": "Removed personal email address",
     "INSTITUTION": "Removed institution identifier",
     "TAILSCALE_IP": "Private Tailscale address; supply on the destination device when needed",
-    "TAILSCALE_HOST": "Private Tailscale device name; supply on the destination device when needed"
+    "TAILSCALE_HOST": "Private Tailscale device name; supply on the destination device when needed",
+    "TAILSCALE_PC": "PC name or address; configured separately on the device",
+    "TAILSCALE_MAC": "Mac name or address; configured separately on the device",
+    "ALIAS_PC": "Optional SSH alias for PC",
+    "ALIAS_MAC": "Optional SSH alias for Mac",
+    "KEY_FILE": "Local SSH identity file path; never key contents"
   },
-  "note": "Windows setup renders only install_values. Historical and reserved placeholders remain explanatory text; archive/ is never installed. Authentication and private network settings are configured separately."
+  "note": "Windows renders WIN_USER, PHD_ROOT, WSL_HOME, LOCAL_ROOT and ONEDRIVE_ROOT. Mac renders MAC_USER, MAC_HOME, PHD_ROOT, LOCAL_ROOT and ONEDRIVE_ROOT, plus WSL_HOME as a compatibility alias. Mac sets COURSEWORK_ROOT in the installed config. Reserved network placeholders stay unrendered; archive is never installed."
 }

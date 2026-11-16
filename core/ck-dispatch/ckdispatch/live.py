@@ -68,6 +68,8 @@ CONTROL_FILES = ("task.md", "prompt.md", "prompt-live.md", "packet.json", "cmd.t
                  "claude-settings-live.json", "live.sh", ".marker", "live.claim", "live.pid", "live.exit",
                  "result.json", "rulecheck.json", "stdout.log", "stderr.log", "last.md", "live.tty",
                  "reattach.lock")
+if sys.platform == "darwin":
+    CONTROL_FILES += ("live-host.json", "herdr.log")
 
 # argv after the script lines: <command> <title> <profile>. Neither script activates the app: a window that
 # takes keyboard focus would receive whatever the user is typing at that moment. Both print "<window id>|<how>".
@@ -310,6 +312,8 @@ def script_text(*, run_dir: str, cwd: str, env: dict, argv: list, prompt_path: s
     q = shlex.quote
     env_parts = [f"{k}={q(v)}" for k, v in sorted(env.items()) if k not in ("TERM", "NO_COLOR")]
     env_parts.append('TERM="${TERM:-xterm-256color}"')  # the window's terminal type; colours stay on
+    if sys.platform == "darwin":
+        env_parts.append('${HC_TERMINAL_ID:+HC_TERMINAL_ID="$HC_TERMINAL_ID"}')  # the new pane's own identity
     if "LANG" not in env:
         env_parts.append("LANG=en_US.UTF-8")
     agent_cmd = " ".join(f'"$(cat {q(prompt_path)})"' if a is PROMPT else q(str(a)) for a in argv)
@@ -691,6 +695,12 @@ def _closer_main(args: list) -> int:
 
 def _osa(osascript: str, script: list, args: list, env: dict, timeout: int = 60) -> tuple:
     """(ok, stdout, error)."""
+    # Mac transport selection belongs to the terminal host, not the clean agent environment.
+    if sys.platform == "darwin" and os.path.realpath(osascript) == os.path.join(REPO, "platform/mac/osascript"):
+        env = dict(env)
+        for key in ("CK_RUN_HOST", "HC_TERMINAL_ID", "CK_HERDR_HC", "CK_HERDR_APP", "CK_HERDR_LAUNCH_GAP_S"):
+            if key in os.environ:
+                env[key] = os.environ[key]
     argv = [osascript]
     for line in script:
         argv += ["-e", line]
