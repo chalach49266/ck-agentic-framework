@@ -5,3 +5,6 @@ __pycache__/
 /.agents/
 /.aws/
 /.codex/
+
+# Herdr (gpui-shell) writes this type file on every run; it says to keep it out of git
+gpui-kit.d.ts
