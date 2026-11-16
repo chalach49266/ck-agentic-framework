@@ -1,0 +1,23 @@
+{
+  "install_values": {
+    "WIN_USER": "Windows account name, from --win-user or environment; prompted on an interactive install",
+    "PHD_ROOT": "Full PhD parent folder as an absolute WSL path; --phd-root is required without a terminal or with --yes; an existing environment path may be offered interactively",
+    "WSL_HOME": "Installing user's HOME",
+    "LOCAL_ROOT": "Installing user's HOME/PhD_local",
+    "ONEDRIVE_ROOT": "Parent of Documents, derived from PHD_ROOT"
+  },
+  "historical_placeholders": {
+    "MAC_HOME": "Old Mac home folder; reserved for the Mac worker",
+    "MAC_USER": "Old Mac account name; not an install value on Windows",
+    "MACHINE_ID": "Removed source-machine identifier; informational only"
+  },
+  "reserved_privacy_placeholders": {
+    "SIM_MACHINE": "Simulation device name; informational placeholder, configured separately on the destination device",
+    "GITHUB_USER": "Repository owner, if a historical URL needs it",
+    "EMAIL": "Removed personal email address",
+    "INSTITUTION": "Removed institution identifier",
+    "TAILSCALE_IP": "Private Tailscale address; supply on the destination device when needed",
+    "TAILSCALE_HOST": "Private Tailscale device name; supply on the destination device when needed"
+  },
+  "note": "Windows setup renders only install_values. Historical and reserved placeholders remain explanatory text; archive/ is never installed. Authentication and private network settings are configured separately."
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PhotonForge GDS Design"
+  short_description: "Design PhotonForge GDS layouts."
+  default_prompt: "Use PhotonForge to design or modify a photonic GDS layout in this workspace."

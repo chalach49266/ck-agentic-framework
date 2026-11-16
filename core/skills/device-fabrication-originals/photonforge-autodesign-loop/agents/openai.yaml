@@ -1,0 +1,4 @@
+interface:
+  display_name: "PhotonForge Autodesign Loop"
+  short_description: "Run agentic photonic design loops."
+  default_prompt: "Adapt an autonomous PhotonForge/Tidy3D design loop for a photonic device."

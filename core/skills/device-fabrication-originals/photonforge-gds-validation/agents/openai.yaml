@@ -1,0 +1,4 @@
+interface:
+  display_name: "PhotonForge GDS Validation"
+  short_description: "Validate PhotonForge GDS outputs."
+  default_prompt: "Validate a PhotonForge-generated GDS file, layers, cells, bounds, and preview readiness."

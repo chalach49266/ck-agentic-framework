@@ -1,0 +1,4 @@
+interface:
+  display_name: "PhotonForge Repo Maintenance"
+  short_description: "Update PhotonForge ecosystem repos."
+  default_prompt: "Update the managed Photonics_Ecosystem repos and summarize upstream changes."

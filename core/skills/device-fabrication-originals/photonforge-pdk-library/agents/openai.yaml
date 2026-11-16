@@ -1,0 +1,4 @@
+interface:
+  display_name: "PhotonForge PDK Library"
+  short_description: "Use PhotonForge PDK packages."
+  default_prompt: "Use installed PhotonForge PDKs and cloned PDK repos for a photonics layout task."

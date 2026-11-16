@@ -1,0 +1,7 @@
+.test-state/
+tests/.scratch/
+__pycache__/
+.space.lock
+
+# third-party YouTube transcripts: kept local, not redistributed (2026-11-15)
+research/transcripts/
