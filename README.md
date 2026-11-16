@@ -11,7 +11,7 @@ What it holds:
   opens an "ask", starts agents through ck-run, and gives you one start card and one finish card.
 - **ckstack**: the router rules, playbooks and small skills that Grok Bot and every agent read.
 - **skills**: the lab domain skills (photonics, microwave, wiki rules, ...).
-- **setup**: install scripts and the Herdr look for Windows; a Mac draft; a smoke test.
+- **setup**: install scripts and the Herdr look for Windows and Mac; a smoke test.
 - **docs**: how it works, how to use it, the phone method, known problems, history.
 
 ## The idea in one picture
@@ -37,13 +37,13 @@ More diagrams: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Folder | What is in it | Installed to |
 |---|---|---|
 | `core/ck-dispatch/` | ck-run (`bin/ck-run`, `ckdispatch/`), config, schema, tests, `docs/v4.md` (full command guide) | `~/PhD_local/ck-dispatch` |
-| `core/ck-dispatch/platform/` | live-window hosts: `auto` (router), `herdr` (Herdr app), `wsl` (tmux fallback), `mac` (draft) | with ck-dispatch |
+| `core/ck-dispatch/platform/` | live-window hosts: `auto` (router), `herdr` (Herdr app), `wsl` (tmux fallback), `mac` (native iTerm and Herdr) | with ck-dispatch |
 | `core/ckstack/` | `ck-mode/SKILL.md` (router), `playbooks/`, `skills/`, `agents/ck-worker.md`, `principles/` | `~/PhD_local/ckstack` |
 | `core/grokbot-mod/` | the `/grokbot` Claude Code plugin and `GROKBOT.md` | `~/PhD_local/grokbot-mod` |
 | `core/skills/` | lab domain skills (ex grok-bot-skills repo) | `~/PhD_local/grok-bot-skills` |
 | `setup/common/` | Claude plugin list, marketplaces, settings keys, plugin prefs, placeholder list, `smoke.sh` | `~/.claude/...` |
 | `setup/windows/` | `setup.cmd` (Windows side), `setup.sh` + `setup_support.py` (WSL side), `.cmd` shortcuts, Herdr layout, mods, settings, keys, themes | `%USERPROFILE%\.local\bin`, `%USERPROFILE%\.config\herdr-app`, WSL home |
-| `setup/mac/` | Mac part. **Draft, UNVERIFIED** until the Mac fills it | (Mac) |
+| `setup/mac/` | Mac installer, zsh shortcuts, portable Herdr preferences | Mac home |
 | `docs/` | architecture, daily use, phone, troubleshooting, Mac handoff, history | not installed |
 | `archive/` | old code kept as history: the old Mac line of ck-dispatch, ck-herdr v2, ck-smoke | never installed |
 | `verification/` | logs of the PC build checks (git-ignored, local only) | not in git |
@@ -65,20 +65,25 @@ Without a terminal, `setup.sh` requires `--phd-root` and stops before changing f
 If Device Fabrication is missing, setup warns and skips its local `superpowers` plugin. Restore the folder and
 rerun setup to add that plugin.
 
-## New Mac (quick start, UNVERIFIED)
+## New Mac (quick start)
 
-The Mac part is not written yet. The Mac's Claude adds it (see [`docs/MAC_HANDOFF.md`](docs/MAC_HANDOFF.md)).
+The installer and host adapter have offline checks. A real new-Mac install, model logins, plugin downloads,
+live panes and phone access remain **UNVERIFIED**. Full steps: [`setup/mac/README.md`](setup/mac/README.md).
 
-1. Install Git, Python 3, Herdr for Mac (or iTerm2), and Claude Code. Sign in (`claude`, then `/login`).
-2. `gh auth login`
+1. Install Git, Python, Claude Code, iTerm, and optionally Herdr. The detailed guide lists the other agent CLIs.
+2. Sign in to Claude (`claude`, then `/login`) and GitHub (`gh auth login`).
 3. `gh repo clone {{GITHUB_USER}}/ck-agentic-framework ~/ck-agentic-framework`
 4. `cd ~/ck-agentic-framework && claude`
-5. Say: **set me up**. The agent reads `AGENT_SETUP.md` (Mac section).
-6. If `setup/mac/setup.sh` exists: the agent runs it with `--dry-run` first, then for real.
-7. If it does not exist yet: the Mac part is not merged. Stop. Use the Mac handoff prompt first.
-8. Check: `bash setup/common/smoke.sh` (offline), then `--live`.
-9. Phone access: [`docs/PHONE.md`](docs/PHONE.md).
-10. Draft of the Mac part: [`setup/mac/README.md`](setup/mac/README.md).
+5. Say **set me up**. The agent follows the Mac section of `AGENT_SETUP.md`.
+6. By hand: `bash setup/mac/setup.sh --dry-run --mac-user '{{MAC_USER}}' --phd-root '{{PHD_ROOT}}'`.
+7. Read the plan. Run the same command with `--yes` instead of `--dry-run`. For offline setup, add `--no-plugins`.
+8. Open a new terminal. Run `ck-run models`, `ck-run --help`, and `bash setup/common/smoke.sh`.
+9. In Herdr, select the `ck-main` layout. Type `cdev`, `cnv`, or `gb` to open Claude with Grok Bot activation.
+10. When ready for real agents, run `bash setup/common/smoke.sh --live`. Phone method: [`docs/PHONE.md`](docs/PHONE.md).
+
+Use your actual account and full PhD parent path in place of the placeholders. Without a terminal, setup requires
+`--phd-root` and stops before writing if it is missing. It never installs logins, private keys, remote machine
+records or lab project folders. Existing changed files keep their first `.bak`; repeat installs add no source lines.
 
 ## Docs
 

@@ -24,8 +24,9 @@ flowchart LR
 ```
 
 How sure: the PC side was set up and used on the source PC (owner's notes, 2026-11-15). The `hc machine add`
-syntax was read from `hc.exe machine add --help` on the source PC. The Herdr mobile menu names and the Mac side are
-**UNVERIFIED** here. For more, run `hc.exe --skill` (PC) or the Herdr help on the Mac.
+syntax was read from `hc.exe machine add --help` on the source PC and from Mac `hc machine add --help` in the
+Mac inventory. This is the method only. Phone menus, inbound Mac SSH, and an end-to-end connection remain
+**UNVERIFIED**. For more, run `hc.exe --skill` (PC) or `hc --help` (Mac).
 
 ## 1. PC side (Windows)
 
@@ -55,10 +56,27 @@ syntax was read from `hc.exe machine add --help` on the source PC. The Herdr mob
 
 ## 2. Mac side
 
-1. **Tailscale**: install and sign in.
-2. **Remote Login** (SSH): System Settings → General → Sharing → Remote Login: on. Allow only your user.
-3. Put the phone's public key in `~/.ssh/authorized_keys` on the Mac.
-4. Herdr for Mac running. Details of the Mac Herdr setup: `setup/mac/README.md` (UNVERIFIED draft until the Mac fills it).
+Do this on the destination Mac. The framework installer does not enable SSH or change network settings.
+
+1. Install the Tailscale app and sign in to the same private network as the PC and phone. The source Mac used the
+   App Store app. Get your destination machine's value for `{{TAILSCALE_MAC}}` from Tailscale itself. Keep it local.
+2. Install Herdr for Mac and open it once. Check `command -v hc` and `command -v herdr-app`. Install the framework
+   using `setup/mac/README.md`, then choose the `ck-main` layout. Leave the core server running.
+3. **macOS Remote Login must be ON for phone or other inbound SSH access.** Open System Settings → General →
+   Sharing → Remote Login and turn it on. Allow only your user. The owner does this; framework setup does not.
+   Confirm it is actually listening with `lsof -nP -iTCP:ssh -sTCP:LISTEN`. A launchd enabled flag alone
+   does not prove a listening SSH service. A fresh Mac connection remains UNVERIFIED until you test it.
+4. Add the phone's public key to your Mac user's `~/.ssh/authorized_keys` using your normal local SSH setup.
+   Keep the private key on its original device. Do not paste either key into this repo or an agent prompt.
+5. Use the Tailscale name as the phone's destination. Do not forward a router port. Remote Login can also listen
+   on other Mac interfaces; Tailscale being installed does not restrict that by itself. Check your local firewall
+   policy before relying on a Tailscale-only connection.
+6. Keep the Mac awake and reachable while using it remotely. Native caffeinate prevents idle sleep while ck-run
+   waits for a live run; it does not prove the Mac remains reachable with the lid closed.
+7. In the phone's Herdr app, add `{{MAC_USER}}@{{TAILSCALE_MAC}}` with your local SSH key, then open a terminal.
+   Check that you can see the intended spaces and safely type a harmless command before starting lab work.
+8. To let this Mac show the PC in desktop Herdr, use the method in the next section. Machine records are private
+   state; the installer does not import them from the source Mac.
 
 ## 3. Phone side
 
@@ -77,7 +95,7 @@ Each Herdr can show the other computer as a "machine":
 | On | Machine | How |
 |---|---|---|
 | PC | `mac` | `hc.exe machine add {{MAC_USER}}@{{TAILSCALE_MAC}} --name mac` (syntax from `hc.exe machine add --help` on the source PC: the target is "how ssh reaches it"). The SSH key lives in the Windows user's `.ssh` folder |
-| Mac | the PC | the same on the Mac: `hc machine add {{WIN_USER}}@{{TAILSCALE_PC}} --name pc` (UNVERIFIED on the Mac: the Mac `hc` was not checked) |
+| Mac | the PC | the same on the Mac: `hc machine add {{WIN_USER}}@{{TAILSCALE_PC}} --name pc` (syntax checked in the read-only Mac inventory; the destination connection is UNVERIFIED) |
 
 List machines: `hc.exe machine ls`. Remove one: `hc.exe machine rm <name>`.
 

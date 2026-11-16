@@ -1,118 +1,171 @@
-# setup/mac
+# Set up a Mac
 
-> **DRAFT, UNVERIFIED: the Mac finishes this (`docs/MAC_HANDOFF.md`).**
-> Written on the Windows PC from the old Mac line in `archive/ck-dispatch-2026-11-15/` and the Windows setup.
-> Nothing here was run on a Mac. The Mac's Claude replaces this page with the tested version.
-> `setup/mac/setup.sh` does **not** exist yet.
+This installs copies under your home folder. It does not change your PhD projects. Keep the checkout separate
+from the installed folders. Read [AGENT_SETUP.md](../../AGENT_SETUP.md#m-mac-steps) for the agent workflow.
 
-## What the Mac part must contain
+The source is the live Mac runner and its portable preferences, read for this build. The older archive is not
+installed. Offline tests and temporary-home installs are the proof here. A real new Mac, agent logins, live
+windows, plugin downloads and phone access remain **UNVERIFIED** until you check them on your machine.
 
-| File | What it must do | Model on the PC side |
+## Before you start
+
+Install these applications yourself. Use their normal installers. Setup does not download them or sign you in.
+The observed source Mac used native Claude and Cursor installers, global npm Codex under Homebrew, a standalone
+agy executable, iTerm in the user Applications folder, and the App Store Tailscale app. The exact original
+bootstrap commands are UNKNOWN. No agent executables are bundled in this repo.
+
+| Item | Check in your terminal | Purpose |
 |---|---|---|
-| `setup/mac/setup.sh` | Idempotent installer. `--dry-run` prints every action and changes nothing. `--yes` uses the values given, no prompts. Accepts or asks for `MAC_USER` and `PHD_ROOT`. | `setup/windows/setup.sh` + `setup_support.py` |
-| `setup/mac/README.md` | This page, tested: new-Mac checklist, flags, checks, what is not included | `README.md` "New Windows PC" + `AGENT_SETUP.md` |
-| zsh shortcuts | `cdev`, `cnv`, `gb`, `phd` as in `setup/windows/wsl/ck_shortcuts.sh`, sourced from `~/.zshrc` | `setup/windows/wsl/ck_shortcuts.sh` |
-| Herdr for Mac files | layout, mods (green done, yellow needs you), settings, keys, themes. Copy only if absent, else keep a `.bak` | `setup/windows/herdr/`, `setup.cmd` `:copy_pref` |
-| Mac config for ck-run | `live.osascript`, `live.caffeinate`, `bin_dirs` for macOS (see below) | `core/ck-dispatch/config/workspaces.json` (PC values) |
-| Live host | `core/ck-dispatch/platform/mac/` (see its README) | `platform/herdr`, `platform/wsl`, `platform/auto` |
+| Git | `git --version` | Source checkout |
+| Python | `python3 --version` | Python must support the union type syntax used by core; use Python 3.10 or later (core/ck-dispatch/ckdispatch/config.py) |
+| Claude Code | `command -v claude` | Orchestrator; open `claude` and use `/login` |
+| Codex | `command -v codex` | Sign in with `codex login` |
+| Cursor agent | `command -v agent` | Sign in with `agent login` |
+| agy (optional) | `command -v agy` | Gemini lane uses agy, not the separate gemini executable |
+| iTerm | Open iTerm from Applications | Default live host and fallback |
+| Herdr (optional host) | `command -v hc`; `command -v herdr-app` | Open Herdr once so its core and stock mods exist |
+| GitHub CLI | `gh auth status` | Needed to get the private repo; logins are not copied |
+| Tailscale (phone only) | Open the Tailscale app | See [PHONE.md](../../docs/PHONE.md) |
 
-## What setup.sh should do (proposed order)
+Keep agent binaries on `~/.local/bin`, `/opt/homebrew/bin` or `/usr/local/bin`, or edit the installed config's
+`bin_dirs` after setup. The runner intentionally uses a fixed PATH. Do not source old shell files to discover
+settings. They may contain private values.
 
-```mermaid
-flowchart TD
-  A["Ask or take MAC_USER, PHD_ROOT"] --> B["Copy core/ into ~/PhD_local<br/>fill placeholders"]
-  B --> C["Link ~/.local/bin/ck-run"]
-  C --> D["zsh shortcuts + ~/.zshrc line"]
-  D --> E["Mac live-host config<br/>(osascript, caffeinate, bin_dirs)"]
-  E --> F["Herdr for Mac files<br/>(copy if absent, else .bak)"]
-  F --> G["Claude marketplaces + plugins<br/>(setup/common)"]
-  G --> H["Merge Claude settings keys, keep .bak"]
-  H --> I["Offline tests"]
-  I --> J["setup/common/smoke.sh"]
+### Install Herdr itself
+
+Do this before installing the framework if you want Herdr as a host. The framework copies preferences; it does
+not install the Herdr application or core. The [vendor download page](https://herdr.dev/download/) offers both:
+
+- **Terminal installer:** run the vendor's command yourself in Terminal:
+
+  ```bash
+  curl -fsSL https://releases.herdr.dev/app/install.sh | sh
+  ```
+
+- **Disk image:** download the Mac `.dmg` from that same page, open it, and drag Herdr to Applications.
+
+Open Herdr once. Ensure `~/.local/bin` is on your PATH, then check `command -v hc` and `command -v herdr-app`.
+Do not run either installer as part of an offline framework test.
+
+**Source Mac method — guess from evidence:** the app is at `~/Applications/Herdr.app`, core is under
+`~/.local/share/herdr-core`, and `~/.local/bin/hc` links into that core. The app has no `com.apple.quarantine`
+flag. These observations suggest the terminal install script was used rather than the disk image; they do not
+prove the installation history. The disk-image option is also supported by the vendor. A fresh installation
+remains UNVERIFIED here.
+
+## Choose your paths
+
+`{{MAC_USER}}` means your short Mac account name. `id -un` shows it. `{{PHD_ROOT}}` means the full parent folder
+that contains `Device Fabrication` and `NV Compact Magnetometer`. It may be in OneDrive. Use quotes around paths
+with spaces. Replace placeholder text before running these examples.
+
+Coursework is separate on the source Mac. The installer offers `--coursework-root` for that workspace. Its default
+is `~/Downloads/WashU HW`. Confirm the installed `washu` root and writable course pairs before a coursework run.
+The template's generic course names are examples. Setup does not guess your courses or modify their rule files.
+
+## Dry run first
+
+From the repository root:
+
+```bash
+bash setup/mac/setup.sh --dry-run --mac-user '{{MAC_USER}}' --phd-root '{{PHD_ROOT}}'
 ```
 
-1. Values: `MAC_USER` (default `$USER`), `PHD_ROOT` (a Mac path; ask, no guess). Same safety checks as the Windows
-   installer: absolute paths, no shell metacharacters, nothing written outside `$HOME`, never through a symlink.
-2. Copy `core/ck-dispatch`, `core/ckstack`, `core/grokbot-mod`, `core/skills` into `~/PhD_local/ck-dispatch`,
-   `ckstack`, `grokbot-mod`, `grok-bot-skills`, and fill `{{PHD_ROOT}}`, `{{LOCAL_ROOT}}`, `{{ONEDRIVE_ROOT}}`, and
-   the Mac values (`{{MAC_USER}}`, `{{MAC_HOME}}` are reserved in `setup/common/placeholders.json`).
-3. Link `~/.local/bin/ck-run` → `~/PhD_local/ck-dispatch/bin/ck-run`.
-4. Write the zsh shortcuts and one source line at the top of `~/.zshrc`.
-5. Set the Mac live-host config (next section).
-6. Copy the Herdr for Mac files. Where Herdr for Mac keeps its config: UNKNOWN (find it on the Mac).
-7. Claude plugins: the same lines as Windows (`setup/common/claude/marketplaces.json`, `plugins.txt`), the plugin
-   prefs (`setup/common/claude/store/`), and the settings merge (`setup/common/claude/settings.json`).
-8. Offline tests: `python3 -I ~/PhD_local/ck-dispatch/tests/run_all.py`. Then `bash setup/common/smoke.sh`.
+The dry run lists every file copy, backup rule, link, settings merge, plugin command and check. It creates no
+folders, starts no external commands and changes no files. A bare `--dry-run` without a terminal stops if the
+PhD path is missing. This is intentional. No path is silently selected. In a terminal, setup asks for the user
+and path. An existing candidate path may be offered for confirmation. `--yes` always needs `--phd-root`.
 
-## The Mac live-host config (from the old Mac line)
+## Install
 
-The old Mac config (`archive/ck-dispatch-2026-11-15/config/workspaces.json`, block `live`) had:
+After reading the plan:
 
-| Key | Old Mac value | PC value today |
-|---|---|---|
-| `live.terminal` | `iTerm2` | `iTerm2` (the PC stand-ins answer the iTerm2 calls) |
-| `live.osascript` | `/usr/bin/osascript` | `~/PhD_local/ck-dispatch/platform/auto/osascript` |
-| `live.caffeinate` | not set: ck-run's default `/usr/bin/caffeinate` | the WSL stand-in `platform/wsl/caffeinate` |
-| `bin_dirs` | includes `/opt/homebrew/bin` | no Homebrew |
-| `live.keep_awake` | `true` | `true` |
-| `live.close_tab_after_s` | `300` | `300` |
+```bash
+bash setup/mac/setup.sh --yes --mac-user '{{MAC_USER}}' --phd-root '{{PHD_ROOT}}'
+```
 
-Important: `platform/auto/osascript` reads `/proc`, which macOS does not have. On a Mac it would fall back to the
-WSL tmux script. So the Mac config must **not** use it.
+To use another coursework folder, add `--coursework-root '/full/path/to/coursework'` to both commands.
 
-## iTerm2 (the old Mac default host)
+For an offline install, add `--no-plugins`. Bundled skills and preferences still copy, but Claude marketplaces and
+plugin installation are skipped. To run the suite separately, add `--no-tests`. The short CLI smoke still runs.
+Do not use a real install just to test this script. Use the temporary-home method below.
 
-From `archive/ck-dispatch-2026-11-15/README.md` ("Live mode") and `ckdispatch/live.py`:
+The installer follows this order:
 
-- One iTerm2 window per ask, one tab per run. The window's session **runs** `<run>/live.sh` (nothing is typed).
-- Window name `CK · <agent> · <title> · <id>`.
-- Per-agent iTerm2 profiles in `~/Library/Application Support/iTerm2/DynamicProfiles/ck-run-live.json`
-  (`CK Live claude|codex|cursor|agy`): own tab color and badge, "Allow Title Setting" off.
-- Colors: `core/ck-dispatch/config/iterm_colors.json`.
-- macOS will ask once to let the terminal control iTerm2 (Automation permission). The owner clicks Allow.
-  UNVERIFIED wording.
+- Copy `core/ck-dispatch`, `core/ckstack`, `core/grokbot-mod`, and `core/skills` into `~/PhD_local`. Skills become
+  `grok-bot-skills`. Fill local path placeholders. Copy mode keeps the source checkout separate.
+- Render the installed workspace config. Mac uses `platform/mac/osascript`, native caffeinate, and Homebrew bins.
+  Windows template and adapters stay as shipped.
+- Link `~/.local/bin/ck-run`. Refuse an unrelated existing file or link. Do not write through symlink destinations.
+- Write `~/.ck_shortcuts.zsh`. Add its source line once at the end of `~/.zshrc`. Existing shell and Conda setup
+  stay in place. Open a new terminal. `cdev` and `cnv` go to the project and open Claude with Grok Bot activation.
+  `gb` and `grokbot` open it in `~/PhD_local`. `phd` only changes folder.
+- Copy portable Mac Herdr files into `~/.config/herdr-app`: `layouts/ck-main.json`, `mods/ck-agents`, `mods/ck-pane`,
+  `mods/ck-tabs`, themes, `settings.json`, and keyboard shortcuts in `keys.json`. These are not SSH keys. Use the
+  original task's **copy only if absent** option for every Herdr file. An existing file is left untouched, with
+  `kept yours: <path>` printed. To adopt a newer bundled Herdr file, compare it and move your copy aside yourself.
+- Before replacing any differing installed core file, `~/.ck_shortcuts.zsh`, startup file or merged Claude settings,
+  save its current contents as `<file>.bak-YYYYMMDD-HHMMSS`. A same-second collision adds `-1`, `-2`, and so on;
+  no existing backup is replaced. Identical files create no backups. Old `.bak` files are left alone. Plugin
+  stores already present are kept so a repeat install cannot reset pending Grok Bot jobs.
+- Create a native `/bin/bash` link named `agent` for the Cursor pane icon. No machine-specific executable is copied.
+- Unless `--no-plugins` is set, register marketplaces and install the plugin list from `setup/common/claude`.
+  A conflicting marketplace source stops setup. Missing Device Fabrication skips its local plugin with a warning.
+- Merge shared Claude settings, then the Mac portable preference overlay. Keep other settings and back up each change.
+  Mac uses its source model effort and UI preferences. No permission history, login or generated host context copies.
+  If the installed iTerm app has `cc-status`, merge its hooks without replacing unrelated hooks.
+- Run `setup/common/smoke.sh`, then the core suite and Mac host tests unless `--no-tests` is set.
 
-## Keep awake
+No Herdr machine list, active window document, terminal state, private key, Claude login or run ledger is installed.
+The installer does not switch a running Herdr layout. After setup, select `ck-main` in Herdr's layout picker, or use:
 
-ck-run runs `/usr/bin/caffeinate -i -w <ck-run pid>` while a live run waits (`live.keep_awake`). It stops idle sleep
-only, not sleep when the lid closes on battery.
+```bash
+herdr-app do layout.switch --name ck-main
+```
 
-## Herdr for Mac (the old Mac line)
+Close and reopen the app if its mods do not refresh. To return to the stock look, select `main`. Never stop or
+restart herdr-core from an agent terminal.
 
-The old Mac line put Herdr **inside** ck-run (`archive/ck-dispatch-2026-11-15/ckdispatch/herdr.py`):
+## Check the install
 
-- Host choice: `CK_RUN_HOST=iterm` or `CK_RUN_HOST=herdr:<main terminal id>`. Without it: `HC_TERMINAL_ID` set →
-  Herdr beside that terminal; else the configured terminal (iTerm2).
-- `ck-run launch` wrote `export CK_RUN_HOST=...` into the launch script, so a rerun used the same host.
-- Tools: `hc` and `herdr-app` from the PATH, or `~/.local/bin/hc`, `~/.local/bin/herdr-app` (override:
-  `CK_HERDR_HC`, `CK_HERDR_APP`).
-- Layout: main terminal left half, agents stacked right with equal weights (a version-checked `doc.set` on the
-  `herdr-app` document).
-- Pane state label `ck.state`: `done` (green), `needs` (yellow), `failed` (red).
-- `live-host.json` in the run folder saved the terminal address for watchdog reads, resume and reattach.
+Open a new terminal. Run:
 
-The core in this repo has **no** `herdr.py`: the PC does Herdr through the `osascript` stand-ins instead. The Mac
-picks one way (see `core/ck-dispatch/platform/mac/README.md`).
+```bash
+command -v ck-run
+ck-run models
+ck-run --help
+bash setup/common/smoke.sh
+python3 -I ~/PhD_local/ck-dispatch/tests/run_all.py
+python3 -I -m unittest discover -s ~/PhD_local/ck-dispatch/platform/mac/tests
+```
 
-## Prerequisites (the owner does these)
+Open the installed `~/PhD_local/ck-dispatch/config/workspaces.json`. Check every workspace root against the folders
+you restored. A successful offline smoke proves the CLI starts; it does not prove model login or window launch.
+For a later live check, run `bash setup/common/smoke.sh --live` from Herdr or iTerm. This starts real agents in auto
+mode. It was not run for this build.
 
-Git, Python 3, `gh` (`gh auth login`), Claude Code (`claude`, then `/login`), Codex (`codex login`), Cursor agent
-(`agent login`), agy (optional), iTerm2 and/or Herdr for Mac, Tailscale (phone only, `docs/PHONE.md`).
-Install methods on the Mac: UNKNOWN until the Mac's inventory (Homebrew, vendor installers, ...).
+## Choose the host
 
-## Checks the Mac must pass (from `docs/MAC_HANDOFF.md`)
+Read [the Mac host README](../../core/ck-dispatch/platform/mac/README.md). Normally, a caller in Herdr stays beside
+its own terminal. A caller outside Herdr uses native iTerm. `CK_RUN_HOST=iterm` forces iTerm. `CK_RUN_HOST=herdr`
+selects Herdr. `CK_RUN_HOST=herdr:<terminal address>` chooses a main terminal explicitly. These are Mac settings;
+Windows keeps its own router variables. Existing session reads always use their saved identity.
 
-- `bash setup/mac/setup.sh --dry-run` lists every action and changes nothing.
-- `HOME=$(mktemp -d) bash setup/mac/setup.sh --yes ...` works, and a repeat install keeps the same files.
-- `ck-run models` and `ck-run --help` work from that install.
-- `python3 -I core/ck-dispatch/tests/run_all.py` still passes (Windows tests included).
-- Privacy grep clean.
-- With the owner's OK: a live smoke race (opus, sol, grok, `--mode auto`) on the Mac.
+## Temporary-home check
 
-## Open points for the Mac (UNKNOWN on the PC)
+This does not install into your real home. It skips plugin downloads and runs the suite separately:
 
-1. Where is this Mac's live ck-dispatch, and how does it differ from `core/ck-dispatch`?
-2. iTerm2, Herdr for Mac, or both? Which is the default?
-3. Herdr for Mac config folder and file names.
-4. How the agent CLIs were installed on the Mac.
-5. The zsh shortcut names in use (`cdev`, `cnv`, `gb`, `grokbot`, ...).
+```bash
+test_home=$(mktemp -d)
+mkdir -p "$test_home/PhD files"
+HOME="$test_home" bash setup/mac/setup.sh --dry-run --mac-user test-user --phd-root "$test_home/PhD files" --no-plugins --no-tests
+HOME="$test_home" bash setup/mac/setup.sh --yes --mac-user test-user --phd-root "$test_home/PhD files" --no-plugins --no-tests
+HOME="$test_home" bash setup/mac/setup.sh --yes --mac-user test-user --phd-root "$test_home/PhD files" --no-plugins --no-tests
+HOME="$test_home" "$test_home/.local/bin/ck-run" models
+HOME="$test_home" "$test_home/.local/bin/ck-run" --help
+```
+
+The same command is safe to repeat. Installed core copies are updated with timestamped backups; existing Herdr
+files are kept. Run `python3 -I -m unittest discover -s setup/mac/tests -v` for the install/edit/reinstall regression.
+Check the files before removing the temporary folder. Review-fix evidence is local in
+`verification/fix1/RESULTS.md` and is not committed.
