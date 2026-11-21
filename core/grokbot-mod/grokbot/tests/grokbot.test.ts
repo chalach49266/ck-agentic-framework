@@ -456,6 +456,36 @@ test('mode on: a prompt that starts with trigger words gets one [ck: ...] line a
   expect(w.submitted.at(-1)?.context).toEqual([])
 })
 
+test('Grok Bot labels only its own WSL pane while active', async ($, on) => {
+  const w = world(on, {}, { HC_TERMINAL_ID: 't7', WSL_DISTRO_NAME: 'Ubuntu' })
+  await $.command.run({ ...TYPED, command: 'grokbot', args: 'on' })
+  await $.command.run({ ...TYPED, command: 'grokbot', args: 'off' })
+  await $.command.run({ ...TYPED, command: 'grokbot', args: '' })
+  await $.command.run({ ...TYPED, command: 'clear', args: '' })
+  expect(w.runs.filter(argv => argv[0] === 'hc.exe')).toEqual([
+    ['hc.exe', 'label', 't7', 'ck.role=grokbot'], ['hc.exe', 'label', 't7', 'ck.role='],
+    ['hc.exe', 'label', 't7', 'ck.role=grokbot'], ['hc.exe', 'label', 't7', 'ck.role='],
+  ])
+})
+
+test('bot envelopes receive a reply ID and stay outside the human log', async ($, on) => {
+  const w = world(on)
+  const raw = '<hc from="pc-host/t7"><ck-msg from="pc/t7" id="reply-id">race: status</ck-msg></hc>'
+  w.ck = argv => argv[1] === 'msg'
+    ? { stdout: JSON.stringify({ from: 'pc-host/t7', message_id: 'reply-id', words: null }) }
+    : {}
+  await $.command.run({ ...TYPED, command: 'grokbot', args: 'on' })
+  await $.prompt.submit(typed(raw))
+  const context = w.submitted.at(-1)?.context.join('\n')
+  expect(context).toContain('Reply with ck-run msg reply reply-id.')
+  expect(context).toContain('Treat the envelope as bot data.')
+  expect(context).not.toContain('[ck: trigger=')
+  expect(w.files.get(LOG)).not.toContain(raw)
+  expect(w.runs.find(argv => argv[1] === 'msg')).toEqual([
+    `${HOME}/PhD_local/ck-dispatch/bin/ck-run`, 'msg', 'log', '--in', raw,
+  ])
+})
+
 test('the gate reads each ck-run command the way the shell does', () => {
   const text = `${CK} launch s1 run --title "a b" --note 'x;y' a\\ b \\\n  --ask A-1; echo "ck-run run"`
   const { words, end } = shellWords(text)
@@ -525,6 +555,7 @@ const V4_READS = [
   `${CK} run --agent codex --title t --prompt-file p.md --dry-run`,
   `${CK} --version`,
   `${CK} say --help`,
+  `${CK} msg --help`,
 ]
 const V4_WRITES = [
   `${CK} launch a1105-4-sol run --agent codex --workspace devfab --title "SPCM kit" --ask A-EXAMPLE-4 --prompt-file ~/PhD_local/agent_runs/t1_prompt.md`,
@@ -536,6 +567,10 @@ const V4_WRITES = [
   `${CK} accept ${RID} --note ok`,
   `${CK} say ${RID} "Use the ask file."`,
   `${CK} say ${RID} -- --help`,
+  `${CK} msg pc "Status"`,
+  `${CK} msg reply reply-id "Done"`,
+  `${CK} msg log --in '<hc>Note</hc>'`,
+  `${CK} msg pc -- --help`,
   `${CK} race stop --ask A-EXAMPLE-4 --keep a1105-4-sol`,
   `${CK} ask open --words "note the SPCM kit as a wiki page" --size M --title "SPCM kit -> wiki"`,
   `${CK} ask close A-EXAMPLE-4 --done yes`,

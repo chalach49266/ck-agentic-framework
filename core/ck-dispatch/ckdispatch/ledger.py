@@ -38,6 +38,8 @@ New events (asks.py unless noted; events with no run have run_id null):
   ask_close      ask_id, status (done | partial | not_done), card (the finish card), note
   answered       ask_id, note (Grok Bot answered the ask itself, no agent)
   later_add      ask_id, note (the item)
+  progress       run_id, text, progress_offset, to (worker pane)
+  msg_out, msg_out_result, msg_in  message_id, from, to, ask_id, text, words
   over_budget    ask_id, run_id, reason, status (refused | approved), over (the owner's words when approved)
   launch, stall, resume_sent, watchdog_stop, reattach (E2), andon, race, panel, loop_iter (E3): see the spec
 load() returns every event; runs() groups only events that have a run_id.
@@ -55,7 +57,7 @@ KEYS = ["event", "run_id", "parent_run_id", "from", "to", "via", "title", "works
         "duration_s", "exit_code", "note",
         # v4 (2026-11-05): appended, the old order is kept
         "ask_id", "size", "pattern", "tier", "lane", "trigger", "over", "slug", "pid", "reason", "words", "project",
-        "budget", "card", "model_alias", "text", "who", "question_id", "message_id"]
+        "budget", "card", "model_alias", "text", "who", "question_id", "message_id", "progress_offset"]
 LIST_CAP = 200
 
 

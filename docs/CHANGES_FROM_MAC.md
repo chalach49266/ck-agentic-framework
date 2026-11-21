@@ -66,3 +66,17 @@ An offline CLI smoke does not prove account login or a real agent completion.
   `--interactive` opens a normal review pane. A worker question stays visible until a confirmed answer or ask closure.
 - The direct `ck-herdr` launch gate port is N/A because `ck-herdr` is archived in this framework.
   See `archive/ck-herdr/`. Live delivery and Windows host behavior are UNVERIFIED.
+
+## Bot messages and silent progress
+
+- `core/ck-dispatch/ckdispatch/messages.py` and the shared CLI, guards, ledger and Herdr transport add
+  `ck-run msg`, `msg reply` and `msg log --in`. Each send checks the recipient's live Grok Bot label and
+  records the attempt before calling Herdr. Replies resolve the hostname in Herdr's wrapper through the configured peer list.
+- Shared config, runner, wait loop, talk and board code publish complete `progress.md` lines on the verified worker
+  pane and show the last one on the board. `herdr.progress` defaults to `label` and can be set to `off`.
+  Progress sends no terminal input. The existing Mac adapter supplies the pane identity and hc calls.
+- The PC adapter looks for `hc.exe` on PATH and supports the default Herdr install path
+  `C:\Users\<user>\AppData\Local\Programs\herdr-core\hc.exe`. Its Grok Bot shortcut passes the local
+  pane identity into WSL. PC to do: verify the installed shortcut, PATH/default resolution and delivery on a live PC.
+- The Grok Bot mod labels its own pane when active, gates `msg` as a write, and logs bot envelopes outside the
+  human prompt log. The ckstack worker and router guides, Grok Bot guide and `docs/HOW_TO_USE.md` describe the workflow.

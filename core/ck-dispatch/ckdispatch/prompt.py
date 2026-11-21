@@ -77,6 +77,8 @@ def header(*, ws: Workspace, run_id: str, agent: str, kind: str, mode: str,
         L.append(f"The live outbox also allows one mid-run question in {live_outbox}/question.md "
                  "(question on the first line, context below) when only the owner can decide. "
                  "Keep working within your scope and follow any tighter limits in the task.")
+        L.append(f"For a live Herdr run, append short progress lines to {live_outbox}/progress.md. "
+                 "Each line ends in a newline. Follow any tighter limits in the task.")
     if mode in ("auto", "edit") and not auto_readonly:
         # the owner 2026-11-03: several agents may work at once, also in this workspace; only claimed paths are reserved
         others = "; ".join(f"{c} (run {r.get('run_id')}, {r.get('agent')})" for c, r in other_claims or [])

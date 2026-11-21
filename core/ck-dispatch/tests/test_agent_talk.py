@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 
-from ckdispatch import asks, cli, herdr, ledger, live, patterns, runner, talk, views
+from ckdispatch import asks, cli, herdr, ledger, live, messages, patterns, runner, talk, views
 from ckdispatch.errors import Refused
 
 
@@ -21,10 +21,11 @@ class AgentTalkTests(unittest.TestCase):
         self.runs = self.root / "runs"
         self.runs.mkdir()
         self.cfg = SimpleNamespace(runs_dir=str(self.runs), home=str(self.root), asks_budgets={},
-                                   herdr_doorbell="auto", herdr_say_cap=3,
+                                   herdr_doorbell="auto", herdr_say_cap=3, herdr_progress="label",
                                    workspace=lambda name: SimpleNamespace(key=name))
         self.panes = {}
         self.sent = []
+        self.labels = []
         self.fail_send = False
         self.closed = []
         self.enterContext(mock.patch.dict(os.environ, {"HC_TERMINAL_ID": "t1"}, clear=True))
@@ -60,6 +61,9 @@ class AgentTalkTests(unittest.TestCase):
             if self.fail_send:
                 raise ValueError("fake hc refused blocked pane")
             return {"status": "ok"}
+        if command == "label":
+            self.labels.append((target, args[0]))
+            return {}
         self.fail(f"unexpected fake hc command {command}")
 
     def close(self, cfg, target, log):
@@ -123,6 +127,58 @@ class AgentTalkTests(unittest.TestCase):
             talk.say(self.cfg, "worker", "Answer")
         self.assertEqual(len(self.events("say")), 1)
         self.assertTrue(self.needs())
+
+    def test_progress_wait_loop_labels_own_worker_and_resumes_from_ledger(self):
+        path = self.rd / "progress.md"
+        path.write_text("Read inputs\nDraft in progress")
+
+        def poll():
+            talk.poll_progress(self.cfg, self.rd.name, self.rd, self.base, None)
+
+        def wait():
+            live.wait_done(str(self.rd), time.time() - 1, .01,
+                           watch={"question_only": True, "progress": poll})
+
+        wait()
+        wait()
+        self.assertEqual(self.labels, [("t2", "ck.progress=Read inputs")])
+        with path.open("a") as stream:
+            stream.write("\n")
+        self.panes["t2"]["labels"]["ck.run"] = "another-run"
+        wait()
+        self.assertEqual(len(self.labels), 1)
+        self.panes["t2"]["labels"]["ck.run"] = self.rd.name
+        wait()
+        self.assertEqual(self.labels[-1], ("t2", "ck.progress=Draft in progress"))
+        self.assertFalse(self.sent)
+        with mock.patch.object(views.Snapshot, "registry", return_value=([{"run_id": self.rd.name}], [])):
+            self.assertEqual(views.Snapshot(self.cfg).running(tails=False)[0]["progress"], "Draft in progress")
+            self.cfg.herdr_progress = "off"
+            self.assertIsNone(views.Snapshot(self.cfg).running(tails=False)[0]["progress"])
+
+    def test_wrapped_reply_uses_peer_alias_and_rechecks_role_before_send(self):
+        target = "pc/t7"
+        fake_bot = {"address": target, "state": "live", "labels": {"ck.role": "grokbot"}}
+        replies = {
+            "server": {"core": {"name": "mac"}},
+            "machine": {"machines": [{"name": "pc", "host": "pc-host"}]},
+            "get": fake_bot,
+            "send": {"sent": True},
+        }
+        raw = ('<hc from="pc-host/t7"><ck-msg from="pc/t7" id="reply-id" '
+               'ask="A-0101-1" words="Check &amp; share">Ready</ck-msg></hc>')
+        result = messages.log_in(self.cfg, raw)
+        self.assertEqual(result, {"from": "pc-host/t7", "message_id": "reply-id", "words": "Check & share"})
+        with mock.patch.object(herdr, "message_call", side_effect=lambda cmd, *a, **kw: replies[cmd]) as hc:
+            messages.reply(self.cfg, "reply-id", "Done")
+            sent = hc.call_args_list[-1].args
+            self.assertEqual(sent[:4], ("send", "--json", "--", target))
+            self.assertNotIn("words=", sent[4])
+            fake_bot["labels"].clear()
+            with self.assertRaisesRegex(Refused, "missing ck.role"):
+                messages.reply(self.cfg, "reply-id", "Done")
+            self.assertEqual(len(self.events("msg_out")), 1)
+            self.assertEqual(self.events("msg_out_result")[0]["status"], "sent")
 
     def test_say_rejects_wrong_run_label_blocked_remote_and_shell_after_exit(self):
         pane = self.panes["t2"]

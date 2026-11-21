@@ -770,11 +770,12 @@ def wait_done(run_dir: str, deadline: float, poll_s: float, result_grace_s: floa
     "close_tab_after_s" (else from the config's live block), "home". See watchdog.py. With watch, time the Mac
     slept is added to the deadline, the Mac is kept awake while waiting, and on "done" the run's tab is closed
     after live.close_tab_after_s. The result then also has "watchdog" (what it saw and did).
-    watch may supply a question callback. With question_only, it polls with no other watchdog behavior.
+    watch may supply question and progress callbacks. With question_only, it polls without the stall watchdog.
     """
     question = watch.get("question") if watch else None
+    progress = watch.get("progress") if watch else None
     if not watch or watch.get("question_only"):
-        return _wait_loop(run_dir, deadline, poll_s, result_grace_s, None, question)
+        return _wait_loop(run_dir, deadline, poll_s, result_grace_s, None, question, progress)
     from .watchdog import Watchdog  # here, not at the top: watchdog.py imports this module
     try:
         wd = Watchdog(run_dir, watch, poll_s)
@@ -783,17 +784,18 @@ def wait_done(run_dir: str, deadline: float, poll_s: float, result_grace_s: floa
         err = f"{type(e).__name__}: {e}"[:300]
         print(f"ck-run: the stall watchdog could not start ({err}); waiting without it", file=sys.stderr)
         sys.stderr.flush()
-        out = _wait_loop(run_dir, deadline, poll_s, result_grace_s, None, question)
+        out = _wait_loop(run_dir, deadline, poll_s, result_grace_s, None, question, progress)
         out["watchdog"] = {"error": f"could not start: {err}"}
         return out
     try:
-        out = _wait_loop(run_dir, deadline, poll_s, result_grace_s, wd, question)
+        out = _wait_loop(run_dir, deadline, poll_s, result_grace_s, wd, question, progress)
     finally:
         wd.close()
     return wd.finished(out)
 
 
-def _wait_loop(run_dir: str, deadline: float, poll_s: float, result_grace_s: float, wd, question=None) -> dict:
+def _wait_loop(run_dir: str, deadline: float, poll_s: float, result_grace_s: float, wd,
+               question=None, progress=None) -> dict:
     summary, result = os.path.join(run_dir, "summary.md"), os.path.join(run_dir, "result.md")
     exit_path, pid_path = os.path.join(run_dir, "live.exit"), os.path.join(run_dir, "live.pid")
     last, seen_at, pid = None, None, None
@@ -803,6 +805,11 @@ def _wait_loop(run_dir: str, deadline: float, poll_s: float, result_grace_s: flo
                 question()
             except OSError as exc:
                 print(f"ck-run: question relay failed: {exc}", file=sys.stderr)
+        if progress is not None and os.path.lexists(os.path.join(run_dir, "progress.md")):
+            try:
+                progress()
+            except OSError as exc:
+                print(f"ck-run: progress label failed: {exc}", file=sys.stderr)
         st = _stat(summary)
         if st and st.st_size > 0:
             sig = (st.st_size, st.st_mtime_ns)

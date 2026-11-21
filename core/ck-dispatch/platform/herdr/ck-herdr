@@ -9,7 +9,11 @@
 # A Grok Bot already running for that folder is shown, not started twice.
 set -euo pipefail
 U="${CK_WIN_USER:-{{WIN_USER}}}"
-HC="${CK_HC:-/mnt/c/Users/$U/AppData/Local/Programs/herdr-core/hc.exe}"
+HC="${CK_HC:-${CK_HERDR_HC:-}}"
+if [ -z "$HC" ]; then
+  HC=$(command -v hc.exe || command -v hc || true)
+  HC="${HC:-/mnt/c/Users/$U/AppData/Local/Programs/herdr-core/hc.exe}"
+fi
 APP="${CK_HERDR_APP:-/mnt/c/Users/$U/AppData/Local/Programs/herdr-app/herdr-app.exe}"
 DISTRO="${CK_WSL_DISTRO:-${WSL_DISTRO_NAME:-Ubuntu}}"
 cd "/mnt/c/Users/$U"   # Windows programs want a Windows folder
@@ -45,8 +49,22 @@ if [ -z "$addr" ]; then
   # in Herdr, under it, and never in a Windows Terminal window.
   addr=$("$HC" run --bg --json --no-parent --no-notify --name "$name" --cwd "C:\\Users\\$U" \
            --label herdr.space=grokbot --label "herdr.tab=$tab" \
-           -- wsl.exe -d "$DISTRO" --exec /bin/bash -lic 'cd "$1" && shift && CK_GROKBOT_AUTO=1 CK_LIVE_HOST=herdr CK_HERDR_PARENT="$0" exec claude "$@"' \
-              "$name" "${FOLDER[$which]}" "$@" \
+           -- wsl.exe -d "$DISTRO" --exec /bin/bash -lic '
+              CK_HC=$1
+              if [ -z "${HC_TERMINAL_ID:-}" ]; then
+                # Herdr starts WSL directly here, so the Windows pane variable may not cross into Bash.
+                HC_TERMINAL_ID=$("$CK_HC" ls --json | python3 -c "
+import json, re, sys
+matches = [t[\"address\"] for t in json.load(sys.stdin).get(\"terminals\", [])
+           if t.get(\"name\") == sys.argv[1] and t.get(\"state\") == \"live\"
+           and re.fullmatch(r\"t[0-9a-z]+\", t.get(\"address\", \"\"))]
+print(matches[0] if len(matches) == 1 else \"\")
+" "$0")
+              fi
+              cd "$2" && shift 2 &&
+                CK_HC="$CK_HC" HC_TERMINAL_ID="${HC_TERMINAL_ID:-}" CK_GROKBOT_AUTO=1 CK_LIVE_HOST=herdr \
+                CK_HERDR_PARENT="$0" exec claude "$@"
+           ' "$name" "$HC" "${FOLDER[$which]}" "$@" \
          | python3 -c 'import json,sys; print(json.load(sys.stdin)["address"])')
   for _ in $(seq 10); do "$APP" do tab.rename --id "$tab" --name "${TITLE[$which]}" >/dev/null 2>&1 && break; sleep 0.3; done
   "$APP" do space.rename --id grokbot --name "Grok Bot" >/dev/null 2>&1 || true

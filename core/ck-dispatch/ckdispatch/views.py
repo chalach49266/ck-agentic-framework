@@ -400,13 +400,16 @@ class Snapshot:
                     if str(sid).lower() in ("none", "unknown", "null"):
                         sid = None
             a = self.ask_of(r) if r else None
+            progress = next((e.get("text") for e in reversed(r.get("events") or [])
+                             if e.get("event") == "progress"), None)
             out.append({"run_id": rid, "agent": rec.get("agent") or r.get("agent"), "model_alias": r.get("model_alias"),
                         "model": r.get("model"), "ask_id": r.get("ask_id"),
                         "ask_title": self.title(a) if a else None,
                         "title": rec.get("title") or r.get("title") or "", "minutes": mins,
                         "kind": rec.get("kind") or r.get("kind"), "window": window_short(rid),
                         "window_id": wid if term == "iTerm2" else None, "session_id": sid, "tty": tty,
-                        "orphan": bool(rec.get("orphan")), "last": None, "last_from": None})
+                        "orphan": bool(rec.get("orphan")), "last": None, "last_from": None,
+                        "progress": progress if self.cfg.herdr_progress == "label" else None})
         if tails:
             self._fill_last(out)
         else:
@@ -525,7 +528,10 @@ def _need_line(n: dict) -> str:
 def _run_line(r: dict) -> str:
     who = " ".join(x for x in (r["agent"], r.get("model_alias") or r.get("model")) if x)
     mins = f"{r['minutes']} min" if r["minutes"] is not None else "? min"
-    bits = [f" >  {who}", r.get("ask_id") or "-", short(r["title"], 40), mins]
+    bits = [f" >  {who}", r.get("ask_id") or "-", short(r["title"], 40)]
+    if r.get("progress"):
+        bits.append(r["progress"])
+    bits.append(mins)
     if r.get("last"):
         bits.append(("last: " if r["last_from"] == "window" else "") + r["last"])
     if r.get("orphan"):

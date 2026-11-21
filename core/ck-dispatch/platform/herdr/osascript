@@ -37,6 +37,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -66,7 +67,9 @@ def win_home_linux() -> str:
 
 
 def hc_path() -> str:
-    return os.environ.get("CK_HC") or f"{win_home_linux()}/AppData/Local/Programs/herdr-core/hc.exe"
+    return (os.environ.get("CK_HC") or os.environ.get("CK_HERDR_HC")
+            or shutil.which("hc.exe") or shutil.which("hc")
+            or f"{win_home_linux()}/AppData/Local/Programs/herdr-core/hc.exe")
 
 
 def app_path() -> str:

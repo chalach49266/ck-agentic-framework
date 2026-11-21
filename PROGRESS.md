@@ -64,3 +64,11 @@ Focused tests passed. Full framework checks, latest Mac host cases, and rendered
 Remaining: inspect final logs and privacy scan, commit locally on main, and write result.md then summary.md.
 Done: full offline framework suite, Mac host and installer suites, rendered Grok Bot mod suite, and fake PC adapter check passed. Logs are in verification/agent-talk/.
 Remaining: record the local main commit and deliver the assigned result.md and summary.md. Live Herdr delivery and native Windows/WSL behavior remain UNVERIFIED.
+
+## Bot messages and progress labels
+
+Done: read the worker brief, Design Library rules, repo playbook, plan, and Mac handoff. Compared the Mac source commits with the clean framework main. The prior port already includes Mac pane names from job titles.
+In progress: adapt message routing and progress polling to the shared framework and existing Herdr adapters.
+Remaining: mod and guides, offline suites, public diff check, local commit, and outbox.
+Done: shared bot messages and silent progress, the Grok Bot mod, public guides, and focused regressions. The framework, Mac host, installer, and rendered mod suites passed. Fake CLI and WSL shortcut checks and the public diff scan passed. Evidence is in verification/bot-messages/.
+Remaining outside this port: live delivery, pane visuals, and installed Windows/WSL behavior are UNVERIFIED.

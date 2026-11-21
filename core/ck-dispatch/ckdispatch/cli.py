@@ -25,7 +25,7 @@ MODEL_HELP = ("a model alias (sol, sol-fast, astra, opus, opus-max, sonnet, haik
               "models), which also picks the agent, or a raw model id for --agent")
 TIER_HELP = "fast, strong or top: the model is the agent's tier model (ck-run models). Default: from the ask size, else strong"
 # v4 extension commands (BUILD_SPEC_v4 10.1): each module's register(sub); a module that is not there is skipped
-EXTENSIONS = ("launch", "reattach", "views", "policy", "andon", "loop", "patterns", "talk")
+EXTENSIONS = ("launch", "reattach", "views", "policy", "andon", "loop", "patterns", "talk", "messages")
 
 
 def _live(cfg: Config, a) -> bool:

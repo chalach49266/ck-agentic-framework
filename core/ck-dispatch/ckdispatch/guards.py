@@ -85,7 +85,7 @@ CK_FREE_TEXT = {"--title", "--note", "--focus", "--approved", "--prompt-file", "
                 "--words", "--over", "--because", "--summary", "--reason", "--plan", "--metric", "--target", "--cwd"}
 # ck-run subcommands whose positional arguments are free text (no agent argv is ever built from them):
 # `ck-run ask later <ask> "<item>"`
-CK_TEXT_COMMANDS = {"ask", "say"}
+CK_TEXT_COMMANDS = {"ask", "say", "msg"}
 # Permission flags CK may never pass to ck-run: ck-run sets them itself.
 CK_PERMISSION_FLAGS = {"--permission-mode", "--sandbox", "-s", "--approval-mode", "--approval-policy",
                        "-a", "--ask-for-approval", "-c", "--config", "--settings", "--allowedtools",
@@ -131,7 +131,7 @@ def check_ck_argv(argv: list) -> None:
             if name in MODEL_FLAGS and value is not None:
                 if _bad_substring(value) or value.lower() in (FORBIDDEN_WORDS - {"auto"}):
                     raise Refused(f"forbidden model value '{value}'")
-            if not eq and (name in CK_FREE_TEXT or name in MODEL_FLAGS):
+            if not eq and (name in CK_FREE_TEXT or name in MODEL_FLAGS or (argv[0] == "msg" and name == "--in")):
                 i += 2
                 continue
         elif text_positionals and i > 0:

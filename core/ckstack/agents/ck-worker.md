@@ -21,6 +21,9 @@ wins over this file.
   new write scope or permission. No answer by the end: keep the question under "Questions for the owner".
 - Live review note: reviewer findings may arrive in your still-open pane. They count as the ask's one fix round. Fix them
   inside your scope and rules only.
+- After each brief step, append a short line ending in a newline to `progress.md` in your run folder.
+  Say what you finished or what you are doing. Herdr sets the pane's `ck.progress` label and `ck-run board` shows
+  the latest line without waking Grok Bot. Use `question.md` when a decision needs the owner.
 - When you write files, keep PROGRESS.md (done, remaining) in your work folder.
 
 ## The v4 result fields (result.json; fill every one, [] or "" for none)

@@ -1,4 +1,4 @@
-"""Shared, local-only Herdr control for ck-run's saved pane identities."""
+"""Herdr transport and local control for ck-run's saved pane identities."""
 from functools import lru_cache
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -51,11 +52,7 @@ def call(cfg, command, target, *args, timeout=20):
         if side == "mac":
             return backend.invoke([backend.hc_path(), "send", "--json", "--", target, *args], timeout=timeout)
         proc = backend.hc("send", "--json", "--", target, *args, timeout=timeout)
-        try:
-            info = json.loads(proc.stdout)
-        except ValueError:
-            info = None
-        rc = proc.returncode
+        return _json_reply(proc, command)
     elif side == "mac":
         return backend.invoke([backend.hc_path(), command, "--json", target, *args], timeout=timeout)
     else:
@@ -63,6 +60,34 @@ def call(cfg, command, target, *args, timeout=20):
     if rc or not isinstance(info, dict) or "error" in info:
         raise ValueError(f"local hc {command} failed (exit {rc})")
     return info
+
+
+def _json_reply(proc, command):
+    try:
+        info = json.loads(proc.stdout)
+    except ValueError:
+        info = None
+    if proc.returncode or not isinstance(info, dict) or "error" in info:
+        detail = info.get("error") if isinstance(info, dict) else None
+        raise ValueError(str(detail or proc.stderr.strip() or f"hc {command} failed (exit {proc.returncode})"))
+    return info
+
+
+def message_call(*args, timeout=10):
+    """Run an explicit bot-message RPC independently of the worker launch transport."""
+    if sys.platform == "darwin":
+        backend = adapter("mac")
+        return backend.invoke([backend.hc_path(), *args], timeout=timeout)
+    if sys.platform == "linux":
+        proc = adapter("herdr").hc(*args, timeout=timeout)
+    else:
+        hc = os.environ.get("CK_HERDR_HC") or os.environ.get("CK_HC") or shutil.which("hc.exe")
+        if not hc:
+            local = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+            hc = str(local / "Programs" / "herdr-core" / "hc.exe")
+        proc = subprocess.run([hc, *args], stdin=subprocess.DEVNULL, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=timeout)
+    return _json_reply(proc, args[0])
 
 
 def saved(run_dir):

@@ -8,12 +8,15 @@ from pathlib import Path
 import shlex
 import stat
 import subprocess
+import unicodedata
 import uuid
 
 from . import asks, herdr, ledger, live
 from .errors import Refused
 
 QUESTION_MAX_BYTES = 65536
+PROGRESS_READ_BYTES = 65536
+PROGRESS_LABEL_MAX = 48
 
 
 class PaneGone(Refused):
@@ -46,6 +49,55 @@ def pending(events):
 
 def _events(cfg, rid):
     return [e for e in ledger.load(cfg.runs_dir) if e.get('run_id') == rid]
+
+
+def poll_progress(cfg, run_id, run_dir, base, offset):
+    """Put the latest complete progress line on this run's own worker pane."""
+    host = herdr.saved(run_dir)
+    target = host.get('terminal')
+    parent = str(host.get('host') or '')
+    if (not parent.startswith('herdr:') or not herdr.local_address(target)
+            or target in (parent.partition(':')[2], os.environ.get('HC_TERMINAL_ID'))):
+        return offset
+    if offset is None:
+        old = next((e for e in reversed(_events(cfg, run_id)) if e.get('event') == 'progress'), {})
+        offset = old.get('progress_offset') or 0
+    try:
+        fd = os.open(Path(run_dir) / 'progress.md', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as file:
+            st = os.fstat(file.fileno())
+            if not stat.S_ISREG(st.st_mode) or offset >= st.st_size:
+                return offset
+            file.seek(offset)
+            lines = file.read(min(st.st_size - offset, PROGRESS_READ_BYTES)).split(b'\n')
+    except OSError:
+        return offset
+    next_offset = offset
+    steps = []
+    for line in lines[:-1]:
+        next_offset += len(line) + 1
+        cleaned = ''.join(c for c in line.decode('utf-8', 'replace')
+                          if c.isspace() or not unicodedata.category(c).startswith('C'))
+        text = ' '.join(cleaned.split())
+        if len(text) > PROGRESS_LABEL_MAX:
+            text = text[:PROGRESS_LABEL_MAX - 1].rstrip() + '…'
+        if text:
+            steps.append((next_offset, text))
+    if not steps:
+        return next_offset
+    try:
+        info = herdr.call(cfg, 'get', target, timeout=5)
+        labels = info.get('labels')
+        if (info.get('address') != target or info.get('state') != 'live' or not isinstance(labels, dict)
+                or labels.get('ck-run') != 'true' or labels.get('ck.run') != run_id):
+            return offset
+        herdr.call(cfg, 'label', target, f'ck.progress={steps[-1][1]}', timeout=5)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return offset
+    for end, text in steps:
+        ledger.append(cfg.runs_dir, event='progress', status='labelled', text=text, progress_offset=end,
+                      **dict(base, run_id=run_id, to=target))
+    return next_offset
 
 
 def poll_question(cfg, run_id, run_dir, base):

@@ -114,6 +114,9 @@ class Config:
         self.herdr_doorbell = herdr.get("doorbell", "auto")
         if self.herdr_doorbell not in ("auto", "on", "off"):
             raise Refused("herdr.doorbell must be auto, on or off")
+        self.herdr_progress = herdr.get("progress", "label")
+        if self.herdr_progress not in ("label", "off"):
+            raise Refused("herdr.progress must be label or off")
         self.herdr_say_cap = int(herdr.get("say_cap", 3))
         if self.herdr_say_cap < 0:
             raise Refused("herdr.say_cap must be nonnegative")

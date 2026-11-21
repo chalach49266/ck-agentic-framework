@@ -700,9 +700,21 @@ def _live_phase(cfg, spec, ws, run_dir, paths, lv, env, base=None):
             "session_id": win.get("session_id"), "home": cfg.home,
             "keep_awake": cfg.live_keep_awake, "close_tab_after_s": cfg.live_close_tab_after_s}
     if _accepts(live.wait_done, "watch"):
-        from . import talk
+        from . import herdr, talk
         watch = wait_kw.setdefault("watch", {"question_only": True})
         watch["question"] = lambda: talk.poll_question(cfg, spec.run_id, run_dir, base)
+        if cfg.herdr_progress == "label" and herdr.transport(cfg):
+            progress_offset = None
+
+            def progress():
+                nonlocal progress_offset
+                try:
+                    progress_offset = talk.poll_progress(cfg, spec.run_id, run_dir, base, progress_offset)
+                except OSError:
+                    progress_offset = None  # recover the last committed offset if a ledger write failed
+                    raise
+
+            watch["progress"] = progress
     old = signal.signal(signal.SIGTERM, _on_sigterm)
     try:
         w = live.wait_done(run_dir, t0 + int(spec.timeout_s), cfg.live_poll_s, **wait_kw)
