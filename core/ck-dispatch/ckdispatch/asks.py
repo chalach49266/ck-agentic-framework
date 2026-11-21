@@ -321,6 +321,9 @@ def usage(cfg, ask_id: str, events: list | None = None, live_records: list | Non
             dispatch.append(rid)
             if rec.get("parent_run_id") in mine:
                 fixes.append(rid)
+    fixes += list(dict.fromkeys('steer:' + e['message_id'] for e in events
+                               if e.get('event') == 'review_steer' and e.get('ask_id') == ask_id
+                               and e.get('message_id')))
     return {"runs": len(dispatch), "reviews": len(reviews), "fixes": len(fixes), "live": len(live),
             "dispatch_ids": dispatch, "review_ids": reviews, "fix_ids": fixes,
             "live_ids": [r.get("run_id") for r in live]}

@@ -75,6 +75,14 @@ class MacTransport(unittest.TestCase):
         with self.assertRaises(ValueError):
             herdr.detect_host('iTerm2', {'CK_RUN_HOST': 'invalid'})
 
+    def test_pane_names_use_job_title_and_run_suffix(self):
+        title = "Port the agent talk changes to the framework!"
+        name = herdr.job_name(title, "run-1")
+        self.assertTrue(name.startswith("port-the-agent-talk-changes"))
+        self.assertRegex(name, r"^[a-z0-9-]{1,32}$")
+        self.assertNotEqual(name, herdr.job_name(title, "run-2"))
+        self.assertEqual(herdr.job_name("", "run-1"), herdr.safe_name("run-1"))
+
     def test_native_forwards_arguments_unchanged(self):
         os.environ['CK_RUN_HOST'] = 'iterm'
         with mock.patch.object(transport, 'native', return_value=0) as native:
@@ -87,6 +95,12 @@ class MacTransport(unittest.TestCase):
         self.assertEqual(rc, 0)
         wid, _, sid = reply.split('|')
         self.assertTrue(sid.startswith('ckmac-'))
+        run = next(c['argv'] for c in self.state()['calls'] if c['argv'][0] == 'run')
+        self.assertIn('--no-notify', run)
+        self.assertEqual(run[run.index('--parent') + 1], 't-main')
+        self.assertIn(f'ck.run={self.run.name}', run)
+        self.assertRegex(run[run.index('--name') + 1], r'^test-[0-9a-f]{4}$')
+        self.assertIn('ck.title=Test', run)
         self.assertEqual(herdr.saved(self.run)['adapter_session'], sid)
         self.assertEqual(self.call('exists', [wid, 'CK'])[1], 'yes')
         self.assertEqual(self.call('tail', [sid, ''])[1][:4], 'CKOK')

@@ -55,7 +55,7 @@ KEYS = ["event", "run_id", "parent_run_id", "from", "to", "via", "title", "works
         "duration_s", "exit_code", "note",
         # v4 (2026-11-05): appended, the old order is kept
         "ask_id", "size", "pattern", "tier", "lane", "trigger", "over", "slug", "pid", "reason", "words", "project",
-        "budget", "card", "model_alias"]
+        "budget", "card", "model_alias", "text", "who", "question_id", "message_id"]
 LIST_CAP = 200
 
 
@@ -241,7 +241,8 @@ def render_thread(events: list, run_id: str, with_summary: bool = True) -> str:
                 L.append(f"- **live fallback**: {ev.get('note') or ''}")
             elif name == "stale":
                 L.append(f"- **stale** at {_hm(ev.get('ts'))}: {ev.get('note') or ''}")
-            elif name in ("stall", "resume_sent", "watchdog_stop", "reattach"):  # v4 watchdog / reattach (E2)
+            elif name in ("stall", "resume_sent", "watchdog_stop", "reattach", "doorbell",
+                          "review_steer", "review_steer_result", "race_stop"):
                 L.append(f"- {name.replace('_', ' ')} at {_hm(ev.get('ts'))}"
                          + (f" ({ev.get('reason')})" if ev.get("reason") else "")
                          + (f": {(ev.get('note') or '')[:300]}" if ev.get("note") else ""))

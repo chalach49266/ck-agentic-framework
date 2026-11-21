@@ -34,6 +34,7 @@ import importlib.machinery
 import importlib.util
 import json
 import os
+from pathlib import Path
 import re
 import shlex
 import subprocess
@@ -398,6 +399,10 @@ def start(command: str, title: str, wid: str, n: int, new_space: bool) -> int:
         space, tab = parent[1], parent[2]
     family = ["--parent", parent[0], "--outlive-parent"] if parent else ["--no-parent"]
     where = [] if parent else ["--label", f"herdr.space={space}", "--label", f"herdr.tab={tab}"]
+    argv = shlex.split(command)
+    live_script = Path(argv[1]) if len(argv) == 2 and argv[0] == "/bin/bash" else None
+    run_dir = live_script.parent if live_script and live_script.is_absolute() and live_script.name == "live.sh" else None
+    run_labels = ["--label", "ck-run=true", "--label", f"ck.run={run_dir.name}"] if run_dir else []
     script = os.path.join(STATE_DIR, name + ".sh")
     with open(script, "w") as f:
         f.write("#!/bin/bash\n# ck-run live window in Herdr: " + title.replace("\n", " ") + "\n"
@@ -410,7 +415,7 @@ def start(command: str, title: str, wid: str, n: int, new_space: bool) -> int:
     # --outlive-parent / --no-notify: a run must not die with, or type notes into, the Grok Bot terminal
     rc, data = hc_json("run", "--bg", *family, "--no-notify", "--name", name,
                        "--cwd", f"C:\\Users\\{win_user()}",
-                       *where, "--label", f"ck.window={wid}", "--label", f"ck.title={short_title(title)}",
+                       *where, *run_labels, "--label", f"ck.window={wid}", "--label", f"ck.title={short_title(title)}",
                        "--", "wsl.exe", "-d", wsl.distro(), "--exec", "/bin/bash", script)
     if rc != 0 or not isinstance(data, dict) or not data.get("address"):
         _locked(lambda: os.path.exists(os.path.join(RUNS_DIR, name + ".json"))
@@ -418,6 +423,14 @@ def start(command: str, title: str, wid: str, n: int, new_space: bool) -> int:
         sys.stderr.write(f"hc run failed (rc {rc}): {json.dumps(data)[:300]}\n")
         return 1
     addr = data["address"]
+    if run_dir:
+        try:
+            metadata = run_dir / "live-host.json"
+            temp = metadata.with_suffix(".tmp")
+            temp.write_text(json.dumps({"host": "herdr:" + (parent[0] if parent else ""), "terminal": addr}) + "\n")
+            temp.replace(metadata)
+        except OSError as exc:
+            sys.stderr.write(f"ck-run: could not record Herdr pane for agent talk: {exc}\n")
     _locked(lambda: write_run(name, {"address": addr, "title": title, "space": space, "tab": tab,
                                      "script": script, "parent": parent and parent[0], "started": time.time()}))
     if parent:

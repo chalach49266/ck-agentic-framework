@@ -42,6 +42,15 @@ def app_path():
     return os.environ.get("CK_HERDR_APP") or shutil.which("herdr-app") or str(Path.home() / ".local/bin/herdr-app")
 
 
+def job_name(title, run_id):
+    """Give Herdr a readable name with a short run-specific suffix."""
+    words = re.sub(r"[^a-z0-9]+", "-", str(title or "").lower()).strip("-")
+    if not words:
+        return safe_name(run_id)
+    words = words[:27].rstrip("-")
+    return words + "-" + hashlib.sha256(run_id.encode()).hexdigest()[:4]
+
+
 def safe_name(run_id):
     # hc names are lowercase, limited to 32 characters. Retain uniqueness after shortening.
     slug = re.sub(r"[^a-z0-9_-]", "-", run_id.lower())
@@ -214,8 +223,9 @@ def job_label(title):
 
 
 def run_argv(run_id, cwd, script, main, labels, agent=None, title=None):
-    return [hc_path(), "run", "--json", "--bg", "--outlive-parent", "--name", safe_name(run_id),
-            "--cwd", str(cwd), "--label", "ck-run=true", "--label", f"ck.main={main}",
+    return [hc_path(), "run", "--json", "--bg", "--outlive-parent", "--no-notify",
+            *(["--parent", main] if main else ["--no-parent"]), "--name", job_name(title, run_id),
+            "--cwd", str(cwd), "--label", "ck-run=true", "--label", f"ck.run={run_id}", "--label", f"ck.main={main}",
             *labels, *job_label(title), "--", pane_shell(agent), str(script)]
 
 

@@ -119,6 +119,14 @@ Only reading (up to about 10 files) and no number leaves the lab: `ck-run ask op
    start one background watcher per slug:
    `until grep -q '^ck-run exit=' ~/PhD_local/agent_runs/<slug>.out; do sleep 20; done; cat ~/PhD_local/agent_runs/<slug>.out`
    `ck-run board` shows what runs, what needs the owner, what is done today. After a restart: `ck-run reattach`.
+   **Herdr talk (2026-11-20, A-1120-3).** When you run in a herdr pane, ck-run sends you one logged note when a run
+   ends (`herdr.doorbell`; off when the mod already wakes you). A worker asks mid-run in `question.md`; you get a note and
+   the board shows NEEDS YOU. Answer only from the owner's words or the ask file (the owner 2026-11-20), with
+   `ck-run say <slug> "<answer>"` (logged, cap 3 per run; more needs `--over "<the owner's words>"`). Otherwise leave it
+   for the owner. Never type into a worker pane, never force a blocked pane.
+   **Live review:** `ck-run launch <ask>-review-<agent> review <run> --live --by <agent> --trigger <reason> --ask <ask>`
+   reviews while the worker pane is still open. ck-run sends at most 3 findings to the worker as ONE steer round; it
+   counts as the ask's fix (the owner 2026-11-20). Worker pane gone: findings stay in the review; start a normal fix run.
 
 ## 5. Finish
 - Read only the `.out`: the summary path (it holds the run id), at most 10 summary lines, the exit line.

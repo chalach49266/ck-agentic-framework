@@ -53,3 +53,14 @@ Remaining: full shared suite is running; then final committed-tree privacy check
 Done: full shared suite passes; see verification/fix1/offline-suite.log. Mac host and installer regression suites, old-code failure reproduction, temp-home install/repeat/CLI/dry runs and protected-path checks all pass.
 Done: full staged-tree privacy scan uses the correct complete owner-name pattern and only permits the public CIDR. The privacy recipe uses equivalent bracketed token prefixes so it does not flag itself.
 Remaining: no implementation or test work. Finalization records the new local mac-part commit, final HEAD privacy proof and clean status in verification/fix1/RESULTS.md, then writes the assigned outbox result.md followed by summary.md. No push.
+
+## Agent talk port
+
+Done: read the worker brief, workspace rules, plan, Mac handoff and source changes. Confirmed a clean main at start.
+In progress: port the runner features using saved local pane identities and the existing adapters.
+Remaining: Mac model configuration, guide text, offline and mod tests, privacy scan, local commit and outbox.
+Done: implementation, shared Mac and PC model defaults, Mac job-title names, guide updates, and Mac change register.
+Focused tests passed. Full framework checks, latest Mac host cases, and rendered mod gate checks are in progress.
+Remaining: inspect final logs and privacy scan, commit locally on main, and write result.md then summary.md.
+Done: full offline framework suite, Mac host and installer suites, rendered Grok Bot mod suite, and fake PC adapter check passed. Logs are in verification/agent-talk/.
+Remaining: record the local main commit and deliver the assigned result.md and summary.md. Live Herdr delivery and native Windows/WSL behavior remain UNVERIFIED.

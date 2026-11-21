@@ -25,7 +25,7 @@ MODEL_HELP = ("a model alias (sol, sol-fast, astra, opus, opus-max, sonnet, haik
               "models), which also picks the agent, or a raw model id for --agent")
 TIER_HELP = "fast, strong or top: the model is the agent's tier model (ck-run models). Default: from the ask size, else strong"
 # v4 extension commands (BUILD_SPEC_v4 10.1): each module's register(sub); a module that is not there is skipped
-EXTENSIONS = ("launch", "reattach", "views", "policy", "andon", "loop", "patterns")
+EXTENSIONS = ("launch", "reattach", "views", "policy", "andon", "loop", "patterns", "talk")
 
 
 def _live(cfg: Config, a) -> bool:
@@ -93,7 +93,7 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--live", "--interactive", dest="live", action=argparse.BooleanOptionalAction, default=None, help=LIVE_HELP)
     r.set_defaults(func=cmd_run)
 
-    v = sub.add_parser("review", help="cross-review a finished run by another agent (sends file paths, not content)")
+    v = sub.add_parser("review", help="cross-review a run by another agent; --live enables a Herdr steer round")
     v.add_argument("run_id")
     v.add_argument("--by", choices=AGENTS, help="the reviewing agent (optional when --model is an alias)")
     v.add_argument("--trigger", choices=asks.TRIGGERS,
@@ -108,7 +108,9 @@ def _parser() -> argparse.ArgumentParser:
     v.add_argument("--tier", choices=models.TIERS, help=TIER_HELP)
     v.add_argument("--timeout", type=int)
     v.add_argument("--dry-run", action="store_true")
-    v.add_argument("--live", "--interactive", dest="live", action=argparse.BooleanOptionalAction, default=None, help=LIVE_HELP)
+    v.add_argument("--live", dest="steer", action="store_true", help="review an open Herdr worker and relay findings")
+    v.add_argument("--no-live", "--no-interactive", dest="live", action="store_false", default=None, help="headless review")
+    v.add_argument("--interactive", dest="live", action="store_true", help="open the reviewer in an interactive CLI")
     v.set_defaults(func=cmd_review)
 
     t = sub.add_parser("thread", help="print the conversation chain of a run as markdown")
@@ -215,8 +217,8 @@ def cmd_review(cfg: Config, a) -> int:
     if a.over is not None and not a.over.strip():
         raise Refused("--over is empty: give the owner's words")
     spec = review_spec(cfg, a.run_id, a.by, blind=a.blind, focus=a.focus, title=a.title,
-                       model=a.model, timeout_s=a.timeout, live=_live(cfg, a), ask_id=a.ask, trigger=a.trigger,
-                       tier=a.tier, over=a.over)
+                       model=a.model, timeout_s=a.timeout, live=a.steer or _live(cfg, a), ask_id=a.ask, trigger=a.trigger,
+                       tier=a.tier, over=a.over, live_steer=a.steer)
     return execute(cfg, spec, dry_run=a.dry_run)
 
 

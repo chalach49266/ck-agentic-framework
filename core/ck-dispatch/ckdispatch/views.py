@@ -20,7 +20,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from . import claims, ledger
+from . import claims, ledger, talk
 from .config import Config
 from .errors import Refused
 
@@ -309,6 +309,14 @@ class Snapshot:
         for rid, r in self.runs.items():
             a = self.ask_of(r)
             res = r["result"]
+            question = talk.pending(r["events"])
+            if question and (a is None or self.status(a) != "closed"):
+                slug = question.get("slug") or rid
+                action = ("See the run's result." if res or self.finished_dead(r) else
+                          f'In Herdr, answer with ck-run say {slug} "..."')
+                out.append({"kind": "question", "ask_id": r["ask_id"], "title": r["title"],
+                            "ts": question.get("ts"), "run_id": rid,
+                            "text": f"{slug} asks: {short(question.get('text'), 180)}. {action}"})
             # flagged/violation runs wait for the owner even after `ask close` (it leaves them unaccepted)
             if res and res.get("status") in ("flagged", "violation") and r["accept"] is None:
                 if a is not None or self.recent(res):

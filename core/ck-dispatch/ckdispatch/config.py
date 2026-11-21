@@ -110,6 +110,13 @@ class Config:
         self.live_stall_s = float(lv.get("stall_s", 300))
         self.live_keep_awake = bool(lv.get("keep_awake", True))
         self.live_close_tab_after_s = float(lv.get("close_tab_after_s", 600))
+        herdr = d.get("herdr") or {}
+        self.herdr_doorbell = herdr.get("doorbell", "auto")
+        if self.herdr_doorbell not in ("auto", "on", "off"):
+            raise Refused("herdr.doorbell must be auto, on or off")
+        self.herdr_say_cap = int(herdr.get("say_cap", 3))
+        if self.herdr_say_cap < 0:
+            raise Refused("herdr.say_cap must be nonnegative")
         # read-only Claude review after cursor/agy auto runs (postreview.py). v4: OFF unless post_review.enabled is
         # true (the owner 2026-11-05: "no need review, since those one are for simple stupid task anyways")
         rv = d.get("post_review") or {}

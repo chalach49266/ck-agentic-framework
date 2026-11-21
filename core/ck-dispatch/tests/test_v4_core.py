@@ -145,7 +145,7 @@ class TestBudgetsEndToEnd(Base):
         self.assertIn("top-tier", p.stderr)
         p = self.run_ck("--ask", b, "--model", "astra", agent=None)  # a top model the owner named: allowed
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn(["-m", "gpt-6-astra"], pairs(self.last_call("codex")["argv"]))
+        self.assertIn(["-m", "gpt-6.2-astra"], pairs(self.last_call("codex")["argv"]))
 
     def test_race_budget_runs_top_tier(self):
         a = self.sb.open_ask("S", "race: why is the coupling stuck", "race: why?", "--pattern", "race")
@@ -235,10 +235,10 @@ class TestModelsEndToEnd(Base):
         p = self.run_ck("--model", "sol", agent=None)
         self.assertEqual(p.returncode, 0, p.stderr)
         a = self.last_call("codex")["argv"]
-        self.assertIn(["-m", "gpt-6.1-sol"], pairs(a))
+        self.assertIn(["-m", "gpt-6.2-sol"], pairs(a))
         self.assertIn(["-c", 'model_reasoning_effort="high"'], pairs(a))
         ev = self.events("dispatch", self.sb.run_id_from(p))[0]
-        self.assertEqual((ev["agent"], ev["model"], ev["model_alias"], ev["tier"]), ("codex", "gpt-6.1-sol", "sol", "strong"))
+        self.assertEqual((ev["agent"], ev["model"], ev["model_alias"], ev["tier"]), ("codex", "gpt-6.2-sol", "sol", "strong"))
         p = self.run_ck("--model", "sol", agent="claude")
         self.assertEqual(p.returncode, 2)
         self.assertIn("runs on codex", p.stderr)

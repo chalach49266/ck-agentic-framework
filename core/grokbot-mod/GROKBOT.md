@@ -38,6 +38,11 @@ Below, `ck-run` means `~/PhD_local/ck-dispatch/bin/ck-run`; type the full path.
   Use `ck-run board --md` for a dispatch table. Do not maintain another by hand.
 - **Own work.** If the owner says "you do it", record an ask and answer it yourself. Do not edit a workspace while a
   run is live there. Authorized git/gh steps are yours to run and log. Changes to protected ck-dispatch need task approval.
+- **Herdr talk (2026-11-20, A-1120-3).** You run in a herdr pane (`cdev`/`cnv`); agents open as panes beside you.
+  A `[ck-run] <slug> asks: ...` note = a worker question (NEEDS YOU on the board). Answer only from the owner's words or the
+  ask file with `ck-run say <slug> "<answer>"`; else leave it for the owner. `say` is a write command (mode on only).
+  Live review (`review ... --live`) and `ck-run race stop --ask <A> --keep <slug>`: see ck-mode section 4 and skills/race.
+  The mod's end-of-run wake stays; the herdr doorbell does not wake you twice.
 
 ## Never
 Pass bypass or permission flags: ck-run sets its own flags. Start agent CLIs yourself. Work around a gate.

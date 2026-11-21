@@ -20,6 +20,9 @@ One race = one question, not three jobs.
    Always pass `--mode auto`: `ck-run race` defaults to read. Auto is the normal mode. `--mode read` puts grok (cursor) in plan mode, where it waits for approval and hangs. The brief says:
    "You may write ONLY the two files in your run folder (OUTBOX)."
    It prints the slugs `<ask>-race-<alias>`. Watch each `.out` (ck-mode section 4).
+   In Herdr, each racer that ends sends its own note when the doorbell is on. To keep one and stop the rest:
+   `ck-run race stop --ask <ask> --keep <ask>-race-<alias>` (logged as `race_stop`). It stops the other panes of this
+   race. Use it only with the pick rule `first good`, or when the owner says so.
 5. When all have ended: `ck-run race show --ask <ask>` shows the summaries side by side.
 6. Merge ONE answer:
    - where they agree (a strong sign);

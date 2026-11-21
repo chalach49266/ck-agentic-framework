@@ -193,7 +193,10 @@ def plan(cfg: Config, slug: str, argv: list, *, ask_id: str | None = None, cwd: 
     sh, out = paths(cfg, slug)
     title = _title(argv, slug)
     words = ask_words(cfg.runs_dir, ask)
-    line = f"cd {shlex.quote(cwd)} && {shlex.quote(CK_RUN)} {' '.join(shlex.quote(a) for a in argv)} \"$@\""
+    context = ""
+    if cmd in ("run", "dispatch", "review"):
+        context = f"CK_RUN_SLUG={shlex.quote(slug)} CK_RUN_OUT={shlex.quote(out)} "
+    line = f"cd {shlex.quote(cwd)} && {context}{shlex.quote(CK_RUN)} {' '.join(shlex.quote(a) for a in argv)} \"$@\""
     text = "\n".join(["#!/bin/bash",
                       f"# ck-run launch {slug} (started detached by ck-run launch; the .out ends with 'ck-run exit=N')",
                       *_comment("what", title),

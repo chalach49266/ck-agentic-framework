@@ -101,7 +101,8 @@ class TestLaunchFile(LaunchBase):
         body = [ln for ln in lines[1:] if ln.strip() and not ln.startswith("#")]
         self.assertEqual(len(body), 1, lines)
         want = RUN + ["--prompt-file", pf, "--interactive"]
-        self.assertEqual(body[0], f"cd {shlex.quote(self.sb.devfab)} && {shlex.quote(stub)} "
+        self.assertEqual(body[0], f"cd {shlex.quote(self.sb.devfab)} && CK_RUN_SLUG=count-1 "
+                                  f"CK_RUN_OUT={shlex.quote(info['out'])} {shlex.quote(stub)} "
                                   f"{' '.join(shlex.quote(a) for a in want)} \"$@\"")
         self.assertIn("# what: Count files", lines)
         self.assertIn("# ask: none", lines)

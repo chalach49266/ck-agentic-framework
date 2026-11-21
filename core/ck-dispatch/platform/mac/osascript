@@ -80,10 +80,12 @@ def start(args, wid=None):
     host = prior['host'] if prior else herdr.detect_host('iTerm2')
     if not host.startswith('herdr:'):
         return None
-    parts = title.split('·')
-    agent = parts[1].strip() if len(parts) > 1 else ''
+    parts = title.split(' · ', 2)
+    agent = parts[1] if len(parts) > 1 else ''
+    description = parts[2] if len(parts) > 2 else title
+    job, _, _ = description.rpartition(' · ')
     out = herdr.open_window(run_dir.name, run_dir, script, host.partition(':')[2], runs_dir, run_dir,
-                            agent=agent, title=title)
+                            agent=agent, title=job or description)
     if not out['ok']:
         sys.stderr.write('Mac Herdr failed; using native iTerm: ' + str(out['error']) + '\n')
         return None

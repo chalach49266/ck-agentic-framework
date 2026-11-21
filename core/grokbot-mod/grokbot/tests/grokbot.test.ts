@@ -524,6 +524,7 @@ const V4_READS = [
   `${CK} ask open --help`,
   `${CK} run --agent codex --title t --prompt-file p.md --dry-run`,
   `${CK} --version`,
+  `${CK} say --help`,
 ]
 const V4_WRITES = [
   `${CK} launch a1105-4-sol run --agent codex --workspace devfab --title "SPCM kit" --ask A-EXAMPLE-4 --prompt-file ~/PhD_local/agent_runs/t1_prompt.md`,
@@ -533,6 +534,9 @@ const V4_WRITES = [
   `${CK} loop --ask A-EXAMPLE-4 --agent codex --prompt-file ~/PhD_local/agent_runs/t1_prompt.md --workspace devfab --metric "python3 m.py" --target ">=5" --max 3`,
   `${CK} reattach`,
   `${CK} accept ${RID} --note ok`,
+  `${CK} say ${RID} "Use the ask file."`,
+  `${CK} say ${RID} -- --help`,
+  `${CK} race stop --ask A-EXAMPLE-4 --keep a1105-4-sol`,
   `${CK} ask open --words "note the SPCM kit as a wiki page" --size M --title "SPCM kit -> wiki"`,
   `${CK} ask close A-EXAMPLE-4 --done yes`,
   `${CK} ask park A-EXAMPLE-4 --reason "waits for the owner"`,

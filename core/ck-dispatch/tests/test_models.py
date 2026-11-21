@@ -31,8 +31,9 @@ class TestModelsJson(unittest.TestCase):
                                            "loop", "repo", "scout", "mechanical"})
         for agent in ("claude", "codex", "cursor", "agy"):
             self.assertIn(agent, m["_verified"])
-        self.assertEqual(m["aliases"]["sol"]["model"], "gpt-6.1-sol")
-        self.assertEqual(m["aliases"]["astra"]["model"], "gpt-6-astra")
+        for alias in ("sol", "sol-fast", "sol-max"):
+            self.assertEqual(m["aliases"][alias]["model"], "gpt-6.2-sol")
+        self.assertEqual(m["aliases"]["astra"]["model"], "gpt-6.2-astra")
         self.assertIsNone(m["aliases"]["gemini"]["model"])
 
     def test_cursor_slugs_come_from_the_verified_list(self):
@@ -60,7 +61,7 @@ class TestResolve(unittest.TestCase):
     def test_alias_picks_the_agent(self):
         r = models.resolve(None, "sol")
         self.assertEqual((r["agent"], r["model"], r["alias"], r["tier"], r["effort"], r["explicit"]),
-                         ("codex", "gpt-6.1-sol", "sol", "strong", "high", True))
+                         ("codex", "gpt-6.2-sol", "sol", "strong", "high", True))
         r = models.resolve("codex", "SOL")  # case-insensitive, same agent is fine
         self.assertEqual(r["alias"], "sol")
         self.assertEqual(models.agent_for("grok"), "cursor")
@@ -71,10 +72,10 @@ class TestResolve(unittest.TestCase):
         self.assertIn("runs on codex", str(c.exception))
 
     def test_raw_model_id_needs_the_agent(self):
-        r = models.resolve("codex", "gpt-6.1-sol")
-        self.assertEqual((r["model"], r["alias"], r["effort"], r["explicit"]), ("gpt-6.1-sol", None, None, True))
+        r = models.resolve("codex", "gpt-6.2-sol")
+        self.assertEqual((r["model"], r["alias"], r["effort"], r["explicit"]), ("gpt-6.2-sol", None, None, True))
         with self.assertRaises(Refused):
-            models.resolve(None, "gpt-6.1-sol")
+            models.resolve(None, "gpt-6.2-sol")
         with self.assertRaises(Refused):
             models.resolve(None, None)
         with self.assertRaises(Refused):
@@ -132,11 +133,11 @@ class TestEffortPlumbing(unittest.TestCase):
                 self.assertIn(["--model", "opus"], pairs(a))
                 self.assertIn(["--effort", "xhigh"], pairs(a))
                 a = self._cmd("codex", "sol", mode="auto", live=live)
-                self.assertIn(["-m", "gpt-6.1-sol"], pairs(a))
+                self.assertIn(["-m", "gpt-6.2-sol"], pairs(a))
                 self.assertIn(["-c", 'model_reasoning_effort="high"'], pairs(a))
                 self.assertEqual(sum(1 for x in a if str(x).startswith("model_reasoning_effort")), 1)
                 a = self._cmd("codex", "astra", live=live)  # effort null: no effort flag
-                self.assertIn(["-m", "gpt-6-astra"], pairs(a))
+                self.assertIn(["-m", "gpt-6.2-astra"], pairs(a))
                 self.assertFalse(any("model_reasoning_effort" in str(x) for x in a))
                 a = self._cmd("cursor", "grok", live=live)
                 self.assertIn(["--model", "grok-4.7-high"], pairs(a))
@@ -155,7 +156,7 @@ class TestEffortPlumbing(unittest.TestCase):
         b = build(self.cfg, self.ws, "codex", mode="auto", scopes=[], model=None, run_dir="/tmp/run",
                   schema_path=RESULT_SCHEMA, extra_read_dirs=[], timeout_s=600, claude_settings_path="/tmp/s.json",
                   binary=os.path.join(self.sb.stubs, "codex")).argv
-        self.assertIn(["-m", "gpt-6.1-sol"], pairs(b))
+        self.assertIn(["-m", "gpt-6.2-sol"], pairs(b))
         self.assertFalse(any("model_reasoning_effort" in str(x) for x in b))
 
 
@@ -171,7 +172,7 @@ class TestGuards(unittest.TestCase):
     def test_child_argv_admits_effort_only_for_its_agent(self):
         guards.check_child_argv(["claude", "-p", "--model", "opus", "--effort", "high", PROMPT], PROMPT,
                                 agent="claude")
-        guards.check_child_argv(["codex", "exec", "-m", "gpt-6.1-sol", "-c", 'model_reasoning_effort="low"', "-"],
+        guards.check_child_argv(["codex", "exec", "-m", "gpt-6.2-sol", "-c", 'model_reasoning_effort="low"', "-"],
                                 PROMPT, agent="codex")
         for argv, agent in (
                 (["claude", "-p", "--effort", "ultra", PROMPT], "claude"),            # unknown level
@@ -197,7 +198,7 @@ class TestModelsCli(unittest.TestCase):
     def test_ck_run_models_prints_the_table(self):
         p = self.sb.ck("models")
         self.assertEqual(p.returncode, 0, p.stderr)
-        for word in ("Aliases", "Tiers", "Lanes", "Race default: astra, opus, grok", "gpt-6.1-sol", "grok-4.7-high",
+        for word in ("Aliases", "Tiers", "Lanes", "Race default: astra, opus, grok", "gpt-6.2-sol", "grok-4.7-high",
                      "opus-max", "mechanical"):
             self.assertIn(word, p.stdout)
         j = self.sb.ck("models", "--json")
@@ -207,7 +208,7 @@ class TestModelsCli(unittest.TestCase):
         p = self.sb.ck("route", "--lane", "lab-code")
         self.assertEqual(p.returncode, 0, p.stderr)
         d = json.loads(p.stdout)
-        self.assertEqual((d["pick"]["alias"], d["pick"]["agent"], d["pick"]["model"]), ("sol", "codex", "gpt-6.1-sol"))
+        self.assertEqual((d["pick"]["alias"], d["pick"]["agent"], d["pick"]["model"]), ("sol", "codex", "gpt-6.2-sol"))
         self.assertEqual(d["check"]["alias"], "opus")
         route.mark_limited(self.sb.runs, "codex", "rate limit")
         d = json.loads(self.sb.ck("route", "--lane", "lab-code").stdout)

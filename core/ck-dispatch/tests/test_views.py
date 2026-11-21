@@ -80,7 +80,7 @@ class Fixture:
         t = self.now - timedelta(minutes=minutes_ago)
         return f"{t:%Y-%m-%dT%H%M%S}-{ws}-general-{agent}-{self.n:04x}"
 
-    def run(self, ask_id=None, agent="codex", alias="sol", model="gpt-6.1-sol", title="a task", ws="devfab",
+    def run(self, ask_id=None, agent="codex", alias="sol", model="gpt-6.2-sol", title="a task", ws="devfab",
             kind="dispatch", status="ok", minutes_ago=30, duration_s=600.0, parent=None, lane=None, agent_result=None,
             summary=("did the task",), finished=True, accepted=None, note=None) -> str:
         rid = self.new_id(ws, agent, minutes_ago)

@@ -6,7 +6,7 @@ mode. Writes go to the --write-scope folders if given, else the workspace minus 
 
   claude  auto: -p ... --settings <run>/claude-settings.json --permission-mode auto [--add-dir <scope>]
   codex   auto: exec ... -C <scope|ws> -s workspace-write -c approval_policy="on-request"
-                -c approvals_reviewer="auto_review" -m <model|gpt-6.1-sol> -     (= --approve-for-me)
+                -c approvals_reviewer="auto_review" -m <model|gpt-6.2-sol> -     (= --approve-for-me)
   cursor  auto: -p --output-format json --trust --sandbox enabled --force --workspace <scope|ws> <prompt>
   agy     auto: --output-format json --sandbox ... --mode auto --add-dir <workspace root> --add-dir <run> -p <prompt>
 
@@ -86,7 +86,7 @@ SCHEMA_ENFORCED_BY_FLAG = {"claude": True, "codex": True, "cursor": False, "agy"
 MODES = ("auto", "read", "edit")
 AUTO_AREAS = {a: ["workspace", "local"] for a in AGENTS}   # where an auto-mode --write-scope may point
 POST_REVIEWED = ("cursor", "agy")  # auto runs of these get the mandatory read-only Claude review (postreview.py)
-CODEX_AUTO_MODEL = "gpt-6.1-sol"  # the owner: Astra 6 only for complex tasks (pass --model gpt-6-astra)
+CODEX_AUTO_MODEL = "gpt-6.2-sol"  # the owner: Astra 6 only for complex tasks (pass --model gpt-6.2-astra)
 CODEX_AUTO_CONFIG = ["-c", 'approval_policy="on-request"', "-c", 'approvals_reviewer="auto_review"']
 # Web search (the owner 2026-11-05 ~18:55 CT: "I want to clear the restriction"), every codex run, every mode, headless
 # and --live. codex-cli 0.166.0 `codex --help`: "--search  Enable live web search. When enabled, the native Responses

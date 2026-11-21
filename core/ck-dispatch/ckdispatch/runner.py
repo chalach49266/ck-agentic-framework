@@ -22,7 +22,7 @@ import time
 import uuid
 from datetime import datetime
 
-from . import VERSION, asks, claims, ledger, live, models, postreview, route, rulecheck, summarize
+from . import VERSION, asks, claims, herdr, ledger, live, models, postreview, route, rulecheck, summarize
 from . import prompt as P
 from .config import CLAUDE_GUARD_BASE, PACKET_SCHEMA, REPO, RESULT_SCHEMA, Config, Workspace, inside
 from .errors import Refused
@@ -699,6 +699,10 @@ def _live_phase(cfg, spec, ws, run_dir, paths, lv, env, base=None):
             # optional keys live.wait_done / watchdog.py read: the tab, HOME for the session stores, config values
             "session_id": win.get("session_id"), "home": cfg.home,
             "keep_awake": cfg.live_keep_awake, "close_tab_after_s": cfg.live_close_tab_after_s}
+    if _accepts(live.wait_done, "watch"):
+        from . import talk
+        watch = wait_kw.setdefault("watch", {"question_only": True})
+        watch["question"] = lambda: talk.poll_question(cfg, spec.run_id, run_dir, base)
     old = signal.signal(signal.SIGTERM, _on_sigterm)
     try:
         w = live.wait_done(run_dir, t0 + int(spec.timeout_s), cfg.live_poll_s, **wait_kw)
@@ -773,6 +777,7 @@ def _run_registered(cfg, spec, ws, scopes, cmd, prompt_text, env, cmd_txt, run_d
                     claim_paths=(), other_claims=(), held=None) -> int:
     """One run in its reserved folder, registered in the run registry (claims.py) by execute()."""
     started = ledger.now_iso()
+    herdr.prepare_doorbell(cfg, spec.run_id, run_dir)
     _write(paths["task"], spec.task_text)
     _write(paths["prompt"], prompt_text)
     _write(paths["cmd"], cmd_txt)
@@ -952,10 +957,12 @@ def _finish(cfg, spec, ws, scopes, run_dir, paths, base, *, started, t0, marker_
     observed = [_norm(f, ws.root) for f in parsed["observed_reads"]]
     files_read = list(dict.fromkeys(reported + observed))
     if spec.kind == "review" and not (spec.review or {}).get("blind"):
-        targets = [spec.review["result_md"], spec.review["result_json"]]
+        targets = ([spec.review["task_path"]] if spec.review.get("in_progress") else
+                   [spec.review["result_md"], spec.review["result_json"]])
         read_ok = any(_includes(files_read, t) for t in targets)
         if not read_ok:
-            notes.append("the reviewer did not list the result file in files_read")
+            missing_review_read = "task" if spec.review.get("in_progress") else "result"
+            notes.append(f"the reviewer did not list the {missing_review_read} file in files_read")
     else:
         missing = [p for p in ws.wiki_first if not _includes(files_read, p)]
         read_ok = not missing
@@ -999,6 +1006,17 @@ def _finish(cfg, spec, ws, scopes, run_dir, paths, base, *, started, t0, marker_
         status = "partial"
     else:
         status = "ok"
+    steer_exit = None
+    if (spec.review or {}).get("live_steer") and status in ("ok", "partial") and not schema_errors and read_ok:
+        from . import talk
+        try:
+            notes.append(talk.review_steer(cfg, spec.run_id, spec.review, structured))
+        except (Refused, OSError, ValueError) as exc:
+            steer_exit = EXIT["over_budget"] if isinstance(exc, asks.OverBudget) else EXIT["refused"]
+            status = "partial"
+            note = f"live review steer not delivered: {exc}"
+            problems.append(note)
+            lines = [note[:159]] + lines[:9]
     notes += problems
 
     if status in ("failed", "partial", "timeout") and (exit_code != 0 or parsed["agent_error"]):
@@ -1062,22 +1080,28 @@ def _finish(cfg, spec, ws, scopes, run_dir, paths, base, *, started, t0, marker_
         why = (rc["violations"] + rc["flags"] + notes)[:1]
         print(f"ck-run: status={status} run_id={spec.run_id}" + (f" ({why[0][:200]})" if why else "")
               + f"; details: {paths['result_json']}", file=sys.stderr)
-    return EXIT[status]
+    code = steer_exit or EXIT[status]
+    try:
+        herdr.doorbell(cfg, run_dir, base, code)
+    except (OSError, ValueError) as exc:
+        print(f"ck-run: doorbell could not be recorded: {exc}", file=sys.stderr)
+    return code
 
 
 def review_spec(cfg: Config, orig_run_id: str, by: str | None, *, blind: bool, focus: str | None,
                 title: str | None, model: str | None, timeout_s: int | None, live: bool = False,
                 ask_id: str | None = None, trigger: str | None = None, tier: str | None = None,
-                over: str | None = None) -> Spec:
+                over: str | None = None, live_steer: bool | None = None) -> Spec:
     """v4: --by may be left out when --model is an alias (the alias picks the agent); without --ask the review
     belongs to the ask of the reviewed run; --trigger is the review reason (asks.gate checks it)."""
+    live_steer = live if live_steer is None else live_steer
     if not valid_run_id(orig_run_id):
         raise Refused(f"not a valid run id: {orig_run_id}")
     r = ledger.find_run(cfg.runs_dir, orig_run_id)
     if r is None:
         raise Refused(f"run {orig_run_id} is not in the ledger")
     res = r.last("result")
-    if res is None:
+    if res is None and not live_steer:
         raise Refused(f"run {orig_run_id} has no result yet")
     op = r.opening
     orig_agent = op.get("agent") or op.get("to")
@@ -1086,11 +1110,17 @@ def review_spec(cfg: Config, orig_run_id: str, by: str | None, *, blind: bool, f
     if by == orig_agent:
         raise Refused(f"cross-review needs a different agent than {orig_agent}")
     ask_id = ask_id or op.get("ask_id")
+    if live_steer and (op.get("event") != "dispatch" or not ask_id or ask_id != op.get("ask_id")):
+        raise Refused("live review needs a worker dispatch and its original ask")
     run_dir = os.path.join(cfg.runs_dir, orig_run_id)
+    if res is None:
+        from . import talk
+        talk.live_target(cfg, run_dir, r.events, allow_completed=True)
     orig = {"run_id": orig_run_id, "agent": orig_agent, "title": op.get("title") or "",
             "task_path": os.path.join(run_dir, "task.md"), "result_md": os.path.join(run_dir, "result.md"),
-            "result_json": os.path.join(run_dir, "result.json"), "blind": blind}
-    for k in ("task_path", "result_md", "result_json"):
+            "result_json": os.path.join(run_dir, "result.json"), "blind": blind,
+            "live_steer": live_steer, "in_progress": res is None}
+    for k in (("task_path",) if res is None else ("task_path", "result_md", "result_json")):
         if not os.path.isfile(orig[k]):
             raise Refused(f"missing {orig[k]}")
     ws = cfg.workspace(op.get("workspace") or "")

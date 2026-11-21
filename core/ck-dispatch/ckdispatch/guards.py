@@ -85,7 +85,7 @@ CK_FREE_TEXT = {"--title", "--note", "--focus", "--approved", "--prompt-file", "
                 "--words", "--over", "--because", "--summary", "--reason", "--plan", "--metric", "--target", "--cwd"}
 # ck-run subcommands whose positional arguments are free text (no agent argv is ever built from them):
 # `ck-run ask later <ask> "<item>"`
-CK_TEXT_COMMANDS = {"ask"}
+CK_TEXT_COMMANDS = {"ask", "say"}
 # Permission flags CK may never pass to ck-run: ck-run sets them itself.
 CK_PERMISSION_FLAGS = {"--permission-mode", "--sandbox", "-s", "--approval-mode", "--approval-policy",
                        "-a", "--ask-for-approval", "-c", "--config", "--settings", "--allowedtools",

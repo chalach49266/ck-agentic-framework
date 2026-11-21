@@ -58,7 +58,7 @@ class TestArgvMap(unittest.TestCase):
     def test_auto_mode_flags_per_agent(self):
         want = {"claude": [["--permission-mode", "auto"]],
                 "codex": [["-s", "workspace-write"], ["-c", 'approval_policy="on-request"'],
-                          ["-c", 'approvals_reviewer="auto_review"'], ["-m", "gpt-6.1-sol"]],
+                          ["-c", 'approvals_reviewer="auto_review"'], ["-m", "gpt-6.2-sol"]],
                 "cursor": [["--sandbox", "enabled"]],
                 "agy": [["--mode", "auto"], ["--add-dir", "/tmp/run"]]}  # 2026-11-03: + run folder (and the
                 # workspace root when the cwd is a write scope: tests/test_postreview.py)

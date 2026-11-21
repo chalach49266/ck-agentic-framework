@@ -3,28 +3,28 @@
  "aliases": {
   "sol": {
    "agent": "codex",
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "high",
    "tier": "strong",
    "family": "openai"
   },
   "sol-fast": {
    "agent": "codex",
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "low",
    "tier": "fast",
    "family": "openai"
   },
   "sol-max": {
    "agent": "codex",
-   "model": "gpt-6.1-sol",
+   "model": "gpt-6.2-sol",
    "effort": "xhigh",
    "tier": "top",
    "family": "openai"
   },
   "astra": {
    "agent": "codex",
-   "model": "gpt-6-astra",
+   "model": "gpt-6.2-astra",
    "effort": null,
    "tier": "top",
    "family": "openai"

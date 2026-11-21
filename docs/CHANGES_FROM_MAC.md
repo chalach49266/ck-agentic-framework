@@ -45,3 +45,24 @@ Proof level: `fake_or_tests` for the executed installer and host checks. Local l
 `verification/build/RESULTS.md` (gitignored). A fresh Mac install, online marketplace/plugin installation, macOS
 Automation grants, live pane visuals, actual close timing, a live agent race and phone access remain UNVERIFIED.
 An offline CLI smoke does not prove account login or a real agent completion.
+
+## Agent talk port
+
+- `core/ck-dispatch/ckdispatch/herdr.py`, `talk.py` and the runner, CLI, launch, prompts, views and ledger
+  wire up the completion doorbell, `question.md` relay and **NEEDS YOU**, capped `ck-run say`, a live review
+  steer and `ck-run race stop --ask <ask> --keep <slug>`. The audit records message attempts before calling hc.
+  A matching Grok Bot pending output owns the completion wake in auto mode. The runner sends to local addresses.
+- `core/ck-dispatch/platform/mac/` launches Herdr agents with `--no-notify`, records the pane identity and derives
+  the pane name from the job title plus a run-specific suffix. Its native iTerm route still uses its own transport.
+- `core/ck-dispatch/platform/herdr/osascript` retains `--no-notify` and adds the run label and saved local pane
+  metadata at launch. The shared code uses the existing PC hc and close calls. The PC adapter keeps its existing
+  job-title naming scheme. PC to do: verify this hook with the Windows/WSL host. The harness here uses fake hc.
+- `core/ck-dispatch/config/models.json` sets `sol`, `sol-fast` and `sol-max` to `gpt-6.2-sol`, and `astra`
+  to `gpt-6.2-astra`. Both installers use this file. The direct Codex auto fallback and pinned tests agree with the
+  shared defaults. The existing model evidence in `_verified` records earlier checks.
+- `core/ckstack/` and `core/grokbot-mod/` include the worker, CK, and race instructions. The mod gates `say`
+  as a write command. The offline framework, Mac transport, setup, and rendered mod suites cover the change.
+- `review --live` opts in to steering, with the existing ask review, parallel and fix limits. Launch's automatic
+  `--interactive` opens a normal review pane. A worker question stays visible until a confirmed answer or ask closure.
+- The direct `ck-herdr` launch gate port is N/A because `ck-herdr` is archived in this framework.
+  See `archive/ck-herdr/`. Live delivery and Windows host behavior are UNVERIFIED.

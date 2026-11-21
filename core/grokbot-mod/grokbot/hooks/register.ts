@@ -225,10 +225,10 @@ function segment(code: string, start: number): string {
 const CK_CALL = /(^|[;&|(`'"]\s*|\s)(["']?)([^\s"'();&|<>`]*\/)?ck-run(?=["']?(\s|$))/gm
 const READ_PAIRS = new Set(['ask list', 'ask show', 'andon list', 'race show'])
 const TYPED_RUNS = new Set(['run', 'dispatch', 'review'])
-const WRITE_SUBS = new Set(['accept', 'launch', 'race', 'panel', 'loop', 'reattach', 'ask', 'andon'])
+const WRITE_SUBS = new Set(['accept', 'launch', 'race', 'panel', 'loop', 'reattach', 'ask', 'andon', 'say'])
 
 // typed-run: run, dispatch or review typed directly; write: accept, launch, race, panel, loop, reattach,
-// ask open|close|park|later|answered, andon raise|clear; read: everything else (show thread active limits route
+// ask open|close|park|later|answered, andon raise|clear, say; read: everything else (show thread active limits route
 // board digest recall rules models scoreboard, ask list|show, andon list, race show, --help, --dry-run, and a word
 // that is no ck-run subcommand: `grep x bin/ck-run tests/*.py` names ck-run as a file, found in real commands).
 export type CkKind = 'read' | 'typed-run' | 'write'
@@ -262,7 +262,12 @@ export function ckRunCalls(raw: string): CkCall[] {
     const i = args.findIndex(a => !a.startsWith('-'))
     const sub = i < 0 ? '' : (args[i] ?? '')
     let kind: CkKind = 'read'
-    if (i < 0 || NO_RUN.test(segment(code, start)) || READ_PAIRS.has(`${sub} ${args[i + 1] ?? ''}`)) kind = 'read'
+    const operands = args.slice(i + 1)
+    const delimiter = operands.indexOf('--')
+    const readOnly = sub === 'say'
+      ? operands.slice(0, delimiter < 0 ? undefined : delimiter).some(a => a === '--help' || a === '-h')
+      : NO_RUN.test(segment(code, start))
+    if (i < 0 || readOnly || READ_PAIRS.has(`${sub} ${args[i + 1] ?? ''}`)) kind = 'read'
     else if (TYPED_RUNS.has(sub)) kind = 'typed-run'
     else if (WRITE_SUBS.has(sub)) kind = 'write'
     calls.push({ args, sub, kind, text: command.slice(at, at + end).replace(/\s+/g, ' ').trim() })

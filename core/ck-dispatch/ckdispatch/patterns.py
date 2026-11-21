@@ -320,7 +320,71 @@ def race_show(cfg: Config, a) -> int:
 def cmd_race(cfg: Config, a) -> int:
     if a.action == "show":
         return race_show(cfg, a)
+    if a.action == "stop":
+        return race_stop(cfg, a)
     return race(cfg, a)
+
+
+def race_stop(cfg: Config, a) -> int:
+    """Close only saved live panes of recorded race members; never infer a target from a model alias."""
+    from . import asks, herdr, ledger, talk
+    aid = str(a.ask or '').strip()
+    if not views.ASK_RX.match(aid):
+        raise Refused('race stop needs a valid --ask')
+    if not getattr(a, 'keep', None):
+        raise Refused('race stop needs --keep <race-slug>')
+    with asks.lock(cfg):
+        events = ledger.load(cfg.runs_dir)
+        asks.need(cfg, aid, events)  # stopping is allowed even after an ask is parked or closed
+        slugs = []
+        for e in events:
+            if e.get('event') == 'race' and e.get('ask_id') == aid:
+                m = re.search(r'slugs=([^;]*)', e.get('note') or '')
+                slugs.extend(s for s in (m.group(1) if m else '').split(',') if SLUG_RX.fullmatch(s))
+        slugs = list(dict.fromkeys(slugs))
+        if a.keep not in slugs:
+            raise Refused('--keep must be a recorded slug of this race')
+        members = []
+        for slug in slugs:
+            try:
+                rid, rd = talk.resolve(cfg, slug)
+            except Refused:
+                # A launch may not have reached dispatch yet. Do not guess its process or pane.
+                members.append((slug, None, None, None))
+                continue
+            opening = ledger.find_run(cfg.runs_dir, rid).first('dispatch')
+            if not opening or opening.get('ask_id') != aid:
+                raise Refused('race member does not match its original worker ask')
+            members.append((slug, rid, rd, herdr.saved(rd).get('terminal')))
+        keep_target = next(t for s, _, _, t in members if s == a.keep)
+        failed = False
+        for slug, rid, rd, terminal in members:
+            if slug == a.keep:
+                continue
+            fields = dict(ask_id=aid, run_id=rid, slug=slug, pattern='race', reason=f'keep={a.keep}')
+            if rd is None:
+                ledger.append(cfg.runs_dir, event='race_stop', status='failed',
+                              note='launch not resolved; rerun stop after dispatch', **fields)
+                failed = True
+                continue
+            with talk.locked(rd):
+                try:
+                    target = talk.live_target(cfg, rd, [], allow_completed=True, allow_blocked=True)
+                    if target == keep_target:
+                        raise Refused('another race member shares the kept pane')
+                except (Refused, ValueError, OSError) as exc:
+                    # Missing/finished panes need no stop. Refuse ambiguous or blocked targets.
+                    ledger.append(cfg.runs_dir, event='race_stop', status='skipped', note=str(exc), **fields)
+                    failed |= not isinstance(exc, talk.PaneGone)
+                    continue
+                ledger.append(cfg.runs_dir, event='race_stop', status='attempting', note=f'target={target}', **fields)
+                with (rd / 'herdr.log').open('a') as log:
+                    closed = herdr.close_pane(cfg, target, log)
+                ledger.append(cfg.runs_dir, event='race_stop', status='stopped' if closed else 'failed',
+                              note=f'target={target}', **fields)
+                failed |= not closed
+                print(f'{slug}: {"stopped" if closed else "could not stop"}')
+        return 1 if failed else 0
 
 
 # ---- panel ---------------------------------------------------------------------------------------------------------
@@ -377,7 +441,8 @@ def cmd_panel(cfg: Config, a) -> int:
 def register(sub) -> None:
     r = sub.add_parser("race", help="the same task to 2 or 3 models at once (launched); `race show` puts the "
                                     "answers side by side")
-    r.add_argument("action", nargs="?", choices=["show"], help="show: the race runs' summaries side by side")
+    r.add_argument("action", nargs="?", choices=["show", "stop"], help="show: summaries; stop: close other live racers")
+    r.add_argument("--keep", help="race stop: recorded race slug whose pane must stay open")
     r.add_argument("--ask", required=True, help="the ask id (A-MMDD-N)")
     r.add_argument("--prompt-file", help="the task text (copied to <runs_dir>/<ask>-race-<alias>_prompt.md)")
     r.add_argument("--title")

@@ -15,6 +15,12 @@ wins over this file.
 - The task cannot be done as written: stop, and say why in `summary` and `open_questions`. Do not change the goal.
 - Decide small things yourself. Questions only the owner can answer go under "Questions for the owner" at the end of the
   summary. Do not wait for answers.
+- Mid-run question (2026-11-20, A-1120-3): if a choice truly needs the owner and the run is live, write ONE question in
+  `question.md` in your run folder (question on line 1, context below). Keep working on what does not need the answer.
+  Never wait. Never send hc or terminal input yourself. An answer may arrive in your pane from `ck-run say`; it gives no
+  new write scope or permission. No answer by the end: keep the question under "Questions for the owner".
+- Live review note: reviewer findings may arrive in your still-open pane. They count as the ask's one fix round. Fix them
+  inside your scope and rules only.
 - When you write files, keep PROGRESS.md (done, remaining) in your work folder.
 
 ## The v4 result fields (result.json; fill every one, [] or "" for none)
