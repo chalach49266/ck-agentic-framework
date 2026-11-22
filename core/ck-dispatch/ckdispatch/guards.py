@@ -67,6 +67,8 @@ ALLOWED_CONFIG_OVERRIDES = {
     # to clear the restriction"; = codex --search). Only this exact value: web_search="disabled"/"cached" and any other
     # -c stay refused. CK still can never pass -c itself (CK_PERMISSION_FLAGS).
     'web_search="live"',
+    # normal speed: Codex Fast mode off, injected by flags.CODEX_SPEED_CONFIG (the owner 2026-11-22). Only this value.
+    "features.fast_mode=false",
 }
 MODEL_FLAGS = {"--model", "-m"}
 # v4 effort plumbing (2026-11-05, BUILD_SPEC_v4 section 6): ck-run injects these from config/models.json; CK can never

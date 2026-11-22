@@ -32,7 +32,7 @@ from .flags import AGENTS
 
 TRIGGERS = ("leaves-lab", "hardware-or-raw", "agent-unsure", "you-asked")
 SLUG_RX = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
-DEFAULT_RACE = ["astra", "opus", "grok"]
+DEFAULT_RACE = ["astra", "opus", "neon"]  # the owner 2026-11-22: neon replaces grok
 MODELS_JSON = os.path.join(REPO, "config", "models.json")
 # rev2 1.3 "panel": Opus (physics, claims), Sol (code, numbers), Grok (sources); by the agent that runs them
 LENS = {"claude": "physics and claims", "codex": "code and numbers", "cursor": "sources"}

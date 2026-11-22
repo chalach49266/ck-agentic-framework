@@ -236,7 +236,7 @@ class TestModelsEndToEnd(Base):
         self.assertEqual(p.returncode, 0, p.stderr)
         a = self.last_call("codex")["argv"]
         self.assertIn(["-m", "gpt-6.2-sol"], pairs(a))
-        self.assertIn(["-c", 'model_reasoning_effort="high"'], pairs(a))
+        self.assertIn(["-c", 'model_reasoning_effort="max"'], pairs(a))
         ev = self.events("dispatch", self.sb.run_id_from(p))[0]
         self.assertEqual((ev["agent"], ev["model"], ev["model_alias"], ev["tier"]), ("codex", "gpt-6.2-sol", "sol", "strong"))
         p = self.run_ck("--model", "sol", agent="claude")
@@ -256,7 +256,7 @@ class TestModelsEndToEnd(Base):
         self.assertIn(["--effort", "medium"], pairs(self.last_call("claude")["argv"]))  # S: sonnet
         self.assertIn(["--model", "sonnet"], pairs(self.last_call("claude")["argv"]))
         self.assertEqual(self.run_ck(agent="cursor").returncode, 0)
-        self.assertIn(["--model", "grok-4.7-high"], pairs(self.last_call("cursor")["argv"]))
+        self.assertIn(["--model", "gemini-4-neon-high"], pairs(self.last_call("cursor")["argv"]))
         self.assertEqual(self.run_ck(agent="agy").returncode, 0)
         a = self.last_call("agy")["argv"]
         self.assertNotIn("--model", a)

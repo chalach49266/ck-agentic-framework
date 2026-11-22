@@ -22,11 +22,11 @@ class TestModelsJson(unittest.TestCase):
     def test_file_has_every_alias_tier_lane_of_the_spec(self):
         m = models.load()
         self.assertEqual(set(m["aliases"]), {"sol", "sol-fast", "sol-max", "astra", "opus", "opus-max", "sonnet", "haiku",
-                                             "grok", "composer", "gemini"})
+                                             "grok", "neon", "composer", "gemini"})
         self.assertEqual(m["tiers"]["codex"], {"fast": "sol-fast", "strong": "sol", "top": "astra"})
         self.assertEqual(m["tiers"]["claude"], {"fast": "sonnet", "strong": "opus", "top": "opus-max"})
         self.assertEqual(m["size_tier"], {"S": "fast", "M": "strong", "L": "strong"})
-        self.assertEqual(m["race_default"], ["astra", "opus", "grok"])
+        self.assertEqual(m["race_default"], ["astra", "opus", "neon"])
         self.assertEqual(set(m["lanes"]), {"quick", "lab-code", "bug-fix", "numbers", "wiki", "writing", "decision",
                                            "loop", "repo", "scout", "mechanical"})
         for agent in ("claude", "codex", "cursor", "agy"):
@@ -61,7 +61,7 @@ class TestResolve(unittest.TestCase):
     def test_alias_picks_the_agent(self):
         r = models.resolve(None, "sol")
         self.assertEqual((r["agent"], r["model"], r["alias"], r["tier"], r["effort"], r["explicit"]),
-                         ("codex", "gpt-6.2-sol", "sol", "strong", "high", True))
+                         ("codex", "gpt-6.2-sol", "sol", "strong", "max", True))
         r = models.resolve("codex", "SOL")  # case-insensitive, same agent is fine
         self.assertEqual(r["alias"], "sol")
         self.assertEqual(models.agent_for("grok"), "cursor")
@@ -134,11 +134,12 @@ class TestEffortPlumbing(unittest.TestCase):
                 self.assertIn(["--effort", "xhigh"], pairs(a))
                 a = self._cmd("codex", "sol", mode="auto", live=live)
                 self.assertIn(["-m", "gpt-6.2-sol"], pairs(a))
-                self.assertIn(["-c", 'model_reasoning_effort="high"'], pairs(a))
+                self.assertIn(["-c", 'model_reasoning_effort="max"'], pairs(a))
+                self.assertIn(["-c", "features.fast_mode=false"], pairs(a))
                 self.assertEqual(sum(1 for x in a if str(x).startswith("model_reasoning_effort")), 1)
                 a = self._cmd("codex", "astra", live=live)  # effort null: no effort flag
                 self.assertIn(["-m", "gpt-6.2-astra"], pairs(a))
-                self.assertFalse(any("model_reasoning_effort" in str(x) for x in a))
+                self.assertIn(["-c", 'model_reasoning_effort="xhigh"'], pairs(a))
                 a = self._cmd("cursor", "grok", live=live)
                 self.assertIn(["--model", "grok-4.7-high"], pairs(a))
                 self.assertNotIn("--effort", a)
@@ -198,11 +199,11 @@ class TestModelsCli(unittest.TestCase):
     def test_ck_run_models_prints_the_table(self):
         p = self.sb.ck("models")
         self.assertEqual(p.returncode, 0, p.stderr)
-        for word in ("Aliases", "Tiers", "Lanes", "Race default: astra, opus, grok", "gpt-6.2-sol", "grok-4.7-high",
+        for word in ("Aliases", "Tiers", "Lanes", "Race default: astra, opus, neon", "gpt-6.2-sol", "gemini-4-neon-high",
                      "opus-max", "mechanical"):
             self.assertIn(word, p.stdout)
         j = self.sb.ck("models", "--json")
-        self.assertEqual(json.loads(j.stdout)["race_default"], ["astra", "opus", "grok"])
+        self.assertEqual(json.loads(j.stdout)["race_default"], ["astra", "opus", "neon"])
 
     def test_route_lane_resolves_and_skips_rate_limited_agents(self):
         p = self.sb.ck("route", "--lane", "lab-code")
@@ -212,13 +213,13 @@ class TestModelsCli(unittest.TestCase):
         self.assertEqual(d["check"]["alias"], "opus")
         route.mark_limited(self.sb.runs, "codex", "rate limit")
         d = json.loads(self.sb.ck("route", "--lane", "lab-code").stdout)
-        self.assertEqual(d["pick"]["alias"], "grok")  # astra is codex too: skipped
+        self.assertEqual(d["pick"]["alias"], "neon")  # astra is codex too: skipped
         self.assertIn("codex", d["skipped"])
         self.assertIn("fallback", d["note"])
         d = json.loads(self.sb.ck("route", "--lane", "quick").stdout)
         self.assertEqual(d["pick"]["alias"], "self")
         d = json.loads(self.sb.ck("route", "--lane", "decision").stdout)
-        self.assertEqual([r["alias"] for r in d["race"]], ["opus", "grok"])  # astra skipped (codex limited)
+        self.assertEqual([r["alias"] for r in d["race"]], ["opus", "neon"])  # astra skipped (codex limited)
         self.assertEqual(self.sb.ck("route", "--lane", "nope").returncode, 2)
         old = json.loads(self.sb.ck("route", "--task-type", "wiki_lint").stdout)  # the old behaviour stays
         self.assertEqual(old["agent"], "agy")

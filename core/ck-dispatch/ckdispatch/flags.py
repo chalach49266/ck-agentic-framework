@@ -96,6 +96,10 @@ CODEX_AUTO_CONFIG = ["-c", 'approval_policy="on-request"', "-c", 'approvals_revi
 # could not be read (the merge-gate mod blocks any `codex exec` command line). The tool runs on OpenAI's side; the
 # sandbox network rule (-s, sandbox_workspace_write.network_access=false) still covers shell commands (curl etc.).
 CODEX_WEB_CONFIG = ["-c", 'web_search="live"']
+# Normal speed, never Codex "Fast mode" (service_tier "priority", which gpt-6.2-astra uses by default and which burns
+# usage faster). The owner 2026-11-22: "next time normal speed". Checked: `codex debug prompt-input -c
+# features.fast_mode=bogus` -> "expected a boolean in `features`" (codex-cli 0.166.0).
+CODEX_SPEED_CONFIG = ["-c", "features.fast_mode=false"]
 
 
 class _Prompt:
@@ -184,6 +188,7 @@ def build(cfg: Config, ws: Workspace, agent: str, *, mode: str, scopes: list, mo
                 a += ["--add-dir", s]
             cwd = scope_paths[0]
         a += CODEX_WEB_CONFIG  # live web search in every mode (the owner 2026-11-05)
+        a += CODEX_SPEED_CONFIG  # normal speed, no Fast mode (the owner 2026-11-22)
         if model or mode == "auto":
             a += ["-m", model or CODEX_AUTO_MODEL]
         a += _effort(agent, effort)
@@ -296,6 +301,7 @@ def build_live(cfg: Config, ws: Workspace, agent: str, *, mode: str, scopes: lis
                 a += ["--add-dir", s]
             cwd = scope_paths[0]
         a += CODEX_WEB_CONFIG  # live web search in every mode (the owner 2026-11-05)
+        a += CODEX_SPEED_CONFIG  # normal speed, no Fast mode (the owner 2026-11-22)
         a += ["-a", "on-request"]
         if model or mode == "auto":
             a += ["-m", model or CODEX_AUTO_MODEL]

@@ -111,7 +111,7 @@ class TestV4Integration(unittest.TestCase):
             self.wait_out(slug)
         runs = self.events("dispatch", race)
         self.assertEqual({(e["model_alias"], e["agent"]) for e in runs},
-                         {("astra", "codex"), ("opus", "claude"), ("grok", "cursor")})
+                         {("astra", "codex"), ("opus", "claude"), ("neon", "cursor")})
         self.assertEqual(len(runs), 3)
         self.ck("race", "show", "--ask", race)
         self.ck("ask", "close", race)

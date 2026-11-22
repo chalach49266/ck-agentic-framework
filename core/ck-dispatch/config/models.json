@@ -1,10 +1,10 @@
 {
- "_note": "Aliases the owner types (sol, astra, ...). Effort names and cursor slugs: see _verified. ck-run passes an effort flag only when _verified lists that effort for the agent; CK can never pass --effort or -c itself.",
+ "_note": "Aliases the owner types (sol, astra, ...). Effort names and cursor slugs: see _verified. ck-run passes an effort flag only when _verified lists that effort for the agent; CK can never pass --effort or -c itself. 2026-11-22 (the owner): astra xhigh at normal speed (-c features.fast_mode=false on every codex run); sol and sol-max max; cursor default neon (Gemini 4 Neon high).",
  "aliases": {
   "sol": {
    "agent": "codex",
    "model": "gpt-6.2-sol",
-   "effort": "high",
+   "effort": "max",
    "tier": "strong",
    "family": "openai"
   },
@@ -18,14 +18,14 @@
   "sol-max": {
    "agent": "codex",
    "model": "gpt-6.2-sol",
-   "effort": "xhigh",
+   "effort": "max",
    "tier": "top",
    "family": "openai"
   },
   "astra": {
    "agent": "codex",
    "model": "gpt-6.2-astra",
-   "effort": null,
+   "effort": "xhigh",
    "tier": "top",
    "family": "openai"
   },
@@ -64,6 +64,13 @@
    "tier": "strong",
    "family": "xai"
   },
+  "neon": {
+   "agent": "cursor",
+   "model": "gemini-4-neon-high",
+   "effort": null,
+   "tier": "strong",
+   "family": "google"
+  },
   "composer": {
    "agent": "cursor",
    "model": "composer-2.5",
@@ -92,8 +99,8 @@
   },
   "cursor": {
    "fast": "composer",
-   "strong": "grok",
-   "top": "grok"
+   "strong": "neon",
+   "top": "neon"
   },
   "agy": {
    "fast": "gemini",
@@ -109,7 +116,7 @@
  "race_default": [
   "astra",
   "opus",
-  "grok"
+  "neon"
  ],
  "lanes": {
   "quick": {
@@ -124,7 +131,7 @@
    "worker": "sol",
    "also": [
     "astra",
-    "grok"
+    "neon"
    ],
    "check": "opus"
   },
@@ -139,7 +146,7 @@
    "worker": "sol",
    "also": [
     "opus",
-    "grok"
+    "neon"
    ],
    "check": "opus"
   },
@@ -155,7 +162,7 @@
    "worker": "opus",
    "also": [
     "astra",
-    "grok"
+    "neon"
    ],
    "check": "sol"
   },
@@ -180,7 +187,7 @@
    "check": "opus"
   },
   "scout": {
-   "worker": "grok",
+   "worker": "neon",
    "also": [
     "sol"
    ],
@@ -228,7 +235,8 @@
    "efforts": [
     "low",
     "high",
-    "xhigh"
+    "xhigh",
+    "max"
    ],
    "efforts_source": {
     "high": "~/.codex/config.toml sets model_reasoning_effort = \"high\" next to model = \"gpt-6.1-sol\" (today's codex runs use it)",
@@ -263,8 +271,14 @@
     "composer-2.5",
     "composer-2.5-fast"
    ],
+   "gemini_4_neon": [
+    "gemini-4-neon-low",
+    "gemini-4-neon-medium",
+    "gemini-4-neon-high",
+    "gemini-4-neon-xhigh"
+   ],
    "efforts": [],
-   "note": "agent --list-models has no plain grok-4.7 slug: the effort is part of the slug. The grok alias uses grok-4.7-high (strong tier = Grok 4.7 at high effort, Framework v4 rev2 1.1). No bracket parameters are used."
+   "note": "agent --list-models has no plain grok-4.7 slug: the effort is part of the slug. The grok alias uses grok-4.7-high (strong tier = Grok 4.7 at high effort, Framework v4 rev2 1.1). No bracket parameters are used. 2026-11-22 (the owner): the cursor default is now neon = gemini-4-neon-high, not grok-4.7-high; grok stays an alias."
   },
   "agy": {
    "cli": "agy 1.5.1",
