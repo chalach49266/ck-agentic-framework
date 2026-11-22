@@ -6,9 +6,11 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -110,6 +112,50 @@ class MacTransport(unittest.TestCase):
         left, right = self.state()['doc']['spaces'][0]['tabs'][0]['root']['children']
         self.assertEqual(left['size'], right['size'])
         self.assertEqual([x['content']['terminal'] for x in herdr._leaves(left)], ['t-main', 't-other'])
+
+    def test_cursor_pane_reports_native_status_with_icon(self):
+        self.fixture.write_text('{"run_script":true,"observe_status":true}')
+        self.script.unlink()
+        ready, release = self.run / 'ready', self.run / 'release'
+        live.write_script(str(self.script), run_dir=str(self.run), cwd=str(self.home), env={},
+                          argv=['/bin/bash', '-c', ': > "$1"; while [ ! -f "$2" ]; do sleep 0.05; done',
+                                'fake-cursor', str(ready), str(release)],
+                          prompt_path=str(self.run / 'prompt.md'), title='Cursor fixture', agent='cursor')
+        icon = self.home / 'agent'
+        icon.symlink_to('/bin/bash')  # This link is created by the Mac installer.
+        with mock.patch.dict(herdr.ICON_SHELLS, {'cursor': icon}):
+            rc, reply = self.call(args=['/bin/bash ' + shlex.quote(str(self.script)), 'CK · cursor · Test', ''])
+        self.assertEqual(rc, 0, reply)
+        address = herdr.saved(self.run)['terminal']
+
+        def status():
+            return herdr.invoke([herdr.hc_path(), 'get', '--json', address])['status']
+
+        try:
+            deadline = time.monotonic() + 5
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertTrue(ready.is_file())
+            argv = next(c['argv'] for c in self.state()['calls'] if c['argv'][0] == 'run')
+            self.assertEqual(argv[argv.index('--') + 1], str(icon))
+            self.assertEqual(status(), {'app': 'cursor', 'state': 'working'})
+            (self.run / 'result.md').write_text('Fixture result\n')
+            (self.run / 'summary.md').write_text('Fixture summary\n')
+            done = {'app': 'cursor', 'state': 'done'}
+            deadline = time.monotonic() + 5
+            observed = status()
+            while observed != done and time.monotonic() < deadline:
+                time.sleep(0.05)
+                observed = status()
+            self.assertEqual(observed, done)
+            self.assertFalse((self.run / 'live.exit').exists())
+        finally:
+            release.touch()
+            deadline = time.monotonic() + 5
+            while not (self.run / 'live.exit').exists() and time.monotonic() < deadline:
+                time.sleep(0.05)
+            if not (self.run / 'live.exit').exists():
+                live.stop(str(self.run), grace_s=0.2)
 
     def test_saved_window_retains_herdr_after_host_changes(self):
         _, reply = self.call()

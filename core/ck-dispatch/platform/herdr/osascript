@@ -346,7 +346,7 @@ HERDR_APP = {"claude": "claude-code", "codex": "codex", "cursor": "cursor", "agy
 SILENT_CLIS = {"cursor", "agy"}  # CLIs that send Herdr no status of their own
 
 
-def status_watcher(command: str, title: str, name: str) -> str:
+def status_watcher(run_dir: Path | None, title: str, name: str) -> str:
     """Shell lines for the run's script: a small background job that tells Herdr (OSC 7501 on this terminal) the
     run is `done` (or `error`) as soon as ck-run has written the run's result.json, so Herdr's Agents list shows it
     at once. CLIs that report nothing
@@ -355,16 +355,15 @@ def status_watcher(command: str, title: str, name: str) -> str:
     unless somebody used it (it went working or blocked). A clean run (status ok) nobody used closes itself at the
     end of that time.
     The job ends with the run's program."""
-    m = re.search(r"(/[^'\"\s]*/agent_runs/[^/'\"\s]+)/live\.sh", command)
-    if not m:
+    if run_dir is None:
         return ""
     parts = [p.strip().lower() for p in title.split("·")]
     cli = parts[1] if len(parts) > 1 else ""
     appword = HERDR_APP.get(cli, re.sub(r"[^a-z0-9-]", "", cli))
     rec = (f"app={appword}:" if appword else "") + "state="
     return (
-        f"CKRUN={shlex.quote(m.group(1))}\n"
-        f"ck_status() {{ printf '\\033]7501;{rec}%s\\007' \"$1\" >/dev/tty 2>/dev/null; }}\n"
+        f"CKRUN={shlex.quote(str(run_dir))}\n"
+        f"ck_status() {{ printf '\\033]7501;{rec}%s\\007' \"$1\"; }}\n"
         + ("ck_status working\n" if cli in SILENT_CLIS else "")
         + "(\n"
         "  until [ -s \"$CKRUN/result.json\" ]; do sleep 2; [ -d \"$CKRUN\" ] || exit 0; done\n"
@@ -410,7 +409,7 @@ def start(command: str, title: str, wid: str, n: int, new_space: bool) -> int:
     with open(script, "w") as f:
         f.write("#!/bin/bash\n# ck-run live window in Herdr: " + title.replace("\n", " ") + "\n"
                 f"export PATH={shlex.quote(LINUX_PATH)}:\"$PATH\"\nexport LANG=${{LANG:-C.UTF-8}}\n"
-                "cd \"$HOME\"\n" + status_watcher(command, title, name) +
+                "cd \"$HOME\"\n" + status_watcher(run_dir, title, name) +
                 f"/bin/bash -c {shlex.quote(command)}\nrc=$?\n"
                 "[ -n \"${CKW:-}\" ] && kill \"$CKW\" 2>/dev/null\nexit $rc\n")
     os.chmod(script, 0o700)

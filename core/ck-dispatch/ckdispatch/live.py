@@ -316,6 +316,17 @@ def script_text(*, run_dir: str, cwd: str, env: dict, argv: list, prompt_path: s
     if "LANG" not in env:
         env_parts.append("LANG=en_US.UTF-8")
     agent_cmd = " ".join(f'"$(cat {q(prompt_path)})"' if a is PROMPT else q(str(a)) for a in argv)
+    launch_agent = f"/usr/bin/env -i {' '.join(env_parts)} {agent_cmd}"
+    status_setup = []
+    if agent == "cursor":
+        wrapper = os.path.join(REPO, "ckdispatch", "cursor_herdr.py")
+        status_setup = [
+            "status_wrapper=()",
+            'if [ "${1:-}" = "--herdr-cursor" ]; then',
+            f'  status_wrapper=({q(sys.executable)} -I {q(wrapper)} "$RUN")',
+            "fi",
+        ]
+        launch_agent = '"${status_wrapper[@]}" ' + launch_agent
     # A real terminal keeps a login shell in the window afterwards (iTerm2 would otherwise close it).
     hold = 'if [ -t 0 ] && [ -t 1 ]; then exec "${SHELL:-/bin/zsh}" -l; fi'
     iterm = []
@@ -343,7 +354,8 @@ def script_text(*, run_dir: str, cwd: str, env: dict, argv: list, prompt_path: s
         f"printf '\\033]0;%s\\007' {q(title)}",
         *iterm,
         f"echo {q('ck-run live: ' + title)}",
-        f"/usr/bin/env -i {' '.join(env_parts)} {agent_cmd}",
+        *status_setup,
+        launch_agent,
         'rc=$?; echo $rc > "$RUN/live.exit.tmp" && mv "$RUN/live.exit.tmp" "$RUN/live.exit"',
         'echo "ck-run: the agent exited (code $rc). This window can be closed."',
         hold,

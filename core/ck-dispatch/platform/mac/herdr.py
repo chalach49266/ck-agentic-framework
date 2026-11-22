@@ -223,10 +223,11 @@ def job_label(title):
 
 
 def run_argv(run_id, cwd, script, main, labels, agent=None, title=None):
+    script_args = ["--herdr-cursor"] if agent == "cursor" else []
     return [hc_path(), "run", "--json", "--bg", "--outlive-parent", "--no-notify",
             *(["--parent", main] if main else ["--no-parent"]), "--name", job_name(title, run_id),
             "--cwd", str(cwd), "--label", "ck-run=true", "--label", f"ck.run={run_id}", "--label", f"ck.main={main}",
-            *labels, *job_label(title), "--", pane_shell(agent), str(script)]
+            *labels, *job_label(title), "--", pane_shell(agent), str(script), *script_args]
 
 
 def plan(run_id, cwd, script, host):

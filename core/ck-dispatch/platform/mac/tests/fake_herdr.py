@@ -7,6 +7,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -15,6 +16,18 @@ HERE = Path(__file__).resolve().parent
 
 def block(terminal):
     return {"type": "block", "id": "pane-" + terminal, "content": {"terminal": terminal}, "size": {"weight": 1.0}}
+
+
+def pane_log(address):
+    return HERE / f"herdr-child-{address}.log"
+
+
+def pane_status(address):
+    log = pane_log(address)
+    records = re.findall(rb"\x1b\]7501;([^\x07]+)\x07", log.read_bytes()) if log.exists() else []
+    if records:
+        return dict(field.split("=", 1) for field in records[-1].decode().split(":"))
+    return None
 
 
 def main():
@@ -57,7 +70,7 @@ def main():
             if config.get("run_script"):
                 command = argv[argv.index("--") + 1:]
                 env = dict(os.environ, HC_TERMINAL_ID=address)
-                with (HERE / "herdr-child.log").open("ab") as log:
+                with pane_log(address).open("ab") as log:
                     subprocess.Popen(command, cwd=argv[argv.index("--cwd") + 1], env=env,
                                      stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                                      start_new_session=True, close_fds=True)
@@ -88,6 +101,8 @@ def main():
             reply = next((t for t in state["terminals"] if t["address"] == target), None)
             if reply is None:
                 code, reply = 1, {"error": "terminal not found"}
+            elif config.get("observe_status"):
+                reply = dict(reply, state="live", status=pane_status(target))
         elif argv[0] == "label":
             target = argv[argv.index("--json") + 1]
             for t in state["terminals"]:
