@@ -164,6 +164,11 @@ class TestClassify(unittest.TestCase):
         self.assertEqual(watchdog.classify("Allow command? [y/n]")[0], "approval")
         self.assertEqual(watchdog.classify("Error: 429 Too Many Requests")[0], "rate_limit")
 
+    def test_claude_folder_menu_labels(self):
+        for line in ("❯ No, exit", "Yes, add it", "Enter to confirm · Esc to cancel"):
+            with self.subTest(line=line):
+                self.assertEqual(watchdog.classify(line), ("approval", line))
+
     def test_most_recent_line_wins(self):
         self.assertEqual(watchdog.classify("Do you want to proceed?\nAPI Error: Your computer went to sleep")[0],
                          "sleep")
@@ -361,6 +366,25 @@ class TestStall(WatchBase):
         self.assertIn("waits for your OK", notes[0]["args"][0])
         self.assertEqual(self.calls("write"), [])
         self.assertGreater(len(self.calls("tail")), 3)  # checked again and again, notified once
+
+    def test_claude_folder_approval_notifies(self):
+        # Ledger stall excerpts, with the window line breaks restored.
+        menu = "❯ No, exit\n  Yes, add it\nEnter to confirm · Esc to cancel"
+        folder = "/Users/ckasemtantikul/PhD_local/fnd_sin_next_level/r2b_build"
+        cases = (
+            ("session. Starting Claude Code in this directory and trusting it there lasts, and covers its whole "
+             f"repository or everything below it.\nSecurity guide\n{menu}", "waits for your OK in its window"),
+            (f"{menu}\nAdding:\n  {folder}", f"waits for your OK to add folder {folder}"),
+        )
+        for tail, message in cases:
+            with self.subTest(message=message):
+                rd = self.make_run(agent="claude", alive_agent=False)
+                w = watchdog.Watchdog(rd, self.iterm(rd, agent="claude"), 0.1)
+                w.act.tail_text = tail
+                w._stalled(now=0, idle=w.stall_s)
+                self.assertEqual([e["reason"] for e in self.events(rd, "stall")], ["approval"])
+                self.assertIn(f"claude {message} (watch test).", self.calls("notify")[-1]["args"][0])
+                self.assertEqual(self.calls("write"), [])
 
     def test_rate_limit_marks_the_agent_limited(self):
         self.sb.window("run", tail="⎿  You've hit your usage limit · resets 7pm (America/Chicago)")

@@ -48,7 +48,9 @@ SLEEP_RX = re.compile(r"went to sleep|computer (?:was |is )?(?:asleep|sleeping)|
 APPROVAL_RX = re.compile(
     r"do you want|would you like|\ballow\b|\bapprove\b|\bapproval\b|\[y/n\]|\(y/n\)|\by/n\b|\(y\)es"
     r"|proceed\?|don'?t ask again|run this command\?|press enter to (?:confirm|continue)"
-    r"|waiting for (?:your )?(?:approval|confirmation|permission)|do you trust|trust this folder", re.I)
+    r"|waiting for (?:your )?(?:approval|confirmation|permission)|do you trust|trust this folder"
+    r"|\byes, add it\b|\bno, exit\b|\benter to confirm\b", re.I)
+CLAUDE_FOLDER_PATH_RX = re.compile(r"^[ \t]*Adding:[ \t]*\r?\n[ \t]*(\S[^\r\n]*)", re.M)
 STATUS = {"stall": "stalled", "resume_sent": "sent", "watchdog_stop": "stopped"}
 
 
@@ -388,6 +390,11 @@ class Watchdog:
         what = f" ({self.title})" if self.title else ""
         stop = f"If nothing moves, ck-run stops it at {duration(2 * self.stall_s)} with no activity."
         if reason == "approval":
+            tail = self.act.tail_text or ""
+            if self.agent == "claude" and "yes, add it" in tail.lower():
+                folder = CLAUDE_FOLDER_PATH_RX.search(tail)
+                if folder:
+                    return f"{who} waits for your OK to add folder {folder[1].strip()}{what}. {stop}"
             return f"{who} waits for your OK in its window{what}. {stop}"
         if reason == "rate_limit":
             return f"{who} hit a rate limit{what}. Next runs avoid it. {stop}"
