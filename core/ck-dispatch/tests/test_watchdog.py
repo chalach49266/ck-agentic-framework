@@ -370,7 +370,7 @@ class TestStall(WatchBase):
     def test_claude_folder_approval_notifies(self):
         # Ledger stall excerpts, with the window line breaks restored.
         menu = "❯ No, exit\n  Yes, add it\nEnter to confirm · Esc to cancel"
-        folder = "/Users/ckasemtantikul/PhD_local/fnd_sin_next_level/r2b_build"
+        folder = "/Users/me/PhD_local/project/r2b_build"
         cases = (
             ("session. Starting Claude Code in this directory and trusting it there lasts, and covers its whole "
              f"repository or everything below it.\nSecurity guide\n{menu}", "waits for your OK in its window"),
